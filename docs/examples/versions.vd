@@ -1,0 +1,22 @@
+User = struct {
+    name: string,
+    age: version 2.. enum { age: number, unknown } = unknown,
+    contact: versioned [Contact] {
+        ..3: string = [email this],
+        4: Contact = [this]
+    },
+    is_admin: versioned enum { some: bool, none } {
+        ..5 = none
+        6..: bool = some this
+    },
+};
+
+Contact = enum {
+    phone: number,
+    email: string,
+    version 5.. address: struct {
+        street: string,
+        city: string,
+        country: string,
+    },
+};

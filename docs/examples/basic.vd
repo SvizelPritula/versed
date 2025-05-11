@@ -1,0 +1,15 @@
+User = struct {
+    name: string,
+    age: enum { age: number, unknown },
+    contact: [Contact],
+};
+
+Contact = enum {
+    phone: number,
+    email: string,
+    address: struct {
+        street: string,
+        city: string,
+        country: string,
+    },
+};
