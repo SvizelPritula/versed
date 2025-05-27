@@ -1,7 +1,7 @@
 #[derive(Debug, Clone)]
 pub struct Type<Metadata> {
-    metadata: Metadata,
-    r#type: TypeType<Metadata>,
+    pub r#type: TypeType<Metadata>,
+    pub metadata: Metadata,
 }
 
 #[derive(Debug, Clone)]
@@ -45,4 +45,16 @@ pub struct Versioned<Metadata> {
 pub enum Primitive {
     String,
     Number,
+    Unit,
+}
+
+#[derive(Debug, Clone)]
+pub struct TypeSet<Metadata> {
+    pub types: Vec<NamedType<Metadata>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct NamedType<Metadata> {
+    pub name: String,
+    pub r#type: Type<Metadata>,
 }

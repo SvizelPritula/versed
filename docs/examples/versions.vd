@@ -6,7 +6,7 @@ User = struct {
         4: Contact = [this]
     },
     is_admin: versioned enum { some: bool, none } {
-        ..5 = none
+        ..5 = none,
         6..: bool = some this
     },
 };
