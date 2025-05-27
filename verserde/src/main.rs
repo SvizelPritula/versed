@@ -1,7 +1,12 @@
+use std::io::{Result, stdout};
+
+use source_writer::SourceWriter;
+
 pub mod ast;
 pub mod r#macro;
+pub mod source_writer;
 
-fn main() {
+fn main() -> Result<()> {
     let types = r#types! {
         Name = string;
 
@@ -23,4 +28,32 @@ fn main() {
     };
 
     println!("{types:#?}");
+
+    let mut writer = SourceWriter::new(stdout().lock());
+
+    writer.write_fmt_nl(format_args!("public class {} {{", "User"))?;
+    writer.indent();
+    writer.write_fmt_nl(format_args!(
+        "public required string {} {{ get; set; }}",
+        "Name"
+    ))?;
+    writer.write_fmt_nl(format_args!(
+        "public required ContactType {} {{ get; set; }}",
+        "Contact"
+    ))?;
+    writer.nl()?;
+
+    writer.write_fmt_nl(format_args!("public class {} {{", "ContactType"))?;
+    writer.indent();
+    writer.write_fmt_nl(format_args!(
+        "public required string {} {{ get; set; }}",
+        "Email"
+    ))?;
+    writer.dedent();
+    writer.write_nl("}")?;
+
+    writer.dedent();
+    writer.write_nl("}")?;
+
+    Ok(())
 }
