@@ -3,6 +3,7 @@ use std::io::{Result, stdout};
 use source_writer::SourceWriter;
 
 pub mod ast;
+pub mod c_sharp;
 pub mod r#macro;
 pub mod source_writer;
 
