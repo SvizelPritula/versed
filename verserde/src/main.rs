@@ -1,9 +1,12 @@
 use std::io::{Result, stdout};
 
+use c_sharp::idents::CSharpIdentRules;
+use idents::{CamelCase, PascalCase, convert_case};
 use source_writer::SourceWriter;
 
 pub mod ast;
 pub mod c_sharp;
+pub mod idents;
 pub mod r#macro;
 pub mod source_writer;
 
@@ -55,6 +58,16 @@ fn main() -> Result<()> {
 
     writer.dedent();
     writer.write_nl("}")?;
+
+    for ident in [
+        "my_field", "my-field", "my field", "myField", "MyField", "struct", "10",
+    ] {
+        println!(
+            "{} {}",
+            convert_case(ident, CamelCase, CSharpIdentRules),
+            convert_case(ident, PascalCase, CSharpIdentRules)
+        );
+    }
 
     Ok(())
 }
