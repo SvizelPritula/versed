@@ -8,6 +8,7 @@ pub mod ast;
 pub mod c_sharp;
 pub mod idents;
 pub mod r#macro;
+pub mod metadata;
 pub mod source_writer;
 
 fn main() -> Result<()> {
