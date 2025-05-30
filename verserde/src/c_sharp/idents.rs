@@ -24,6 +24,10 @@ impl IdentRules for CSharpIdentRules {
         GROUP.contains(GeneralCategory::for_char(ch))
     }
 
+    fn reserved_prefix(&self) -> &str {
+        "@"
+    }
+
     fn is_reserved(&self, str: &str) -> bool {
         matches!(
             str,
@@ -105,9 +109,5 @@ impl IdentRules for CSharpIdentRules {
                 | "volatile"
                 | "while"
         )
-    }
-
-    fn reserved_prefix(&self) -> &str {
-        "@"
     }
 }
