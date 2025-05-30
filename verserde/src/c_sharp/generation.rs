@@ -81,9 +81,7 @@ fn emit_enum(
 
         writer.write("public required ")?;
         write_type_name(&variant.r#type, types, writer)?;
-        writer.write(" ")?;
-        writer.write(&variant.metadata.ident)?;
-        writer.write_nl(" { get; set; }")?;
+        writer.write_nl(" Value { get; set; }")?;
 
         emit_declaration_if_needed(&variant.r#type, types, writer)?;
 
