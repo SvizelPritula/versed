@@ -13,7 +13,7 @@ struct Scopes<'a> {
 }
 
 impl<'a> Scopes<'a> {
-    fn with_local<'b>(&'b mut self, local: impl IntoIterator<Item = String>) -> Scopes<'b> {
+    fn with_local(&self, local: impl IntoIterator<Item = String>) -> Scopes<'a> {
         Scopes {
             local: HashSet::from_iter(local.into_iter()),
             global: self.global,
@@ -21,14 +21,21 @@ impl<'a> Scopes<'a> {
     }
 }
 
-fn make_ident(hint: &str, scopes: &mut Scopes, case: impl CaseType) -> String {
+fn make_type_ident(hint: &str, scopes: &mut Scopes, case: impl CaseType) -> String {
     let mut ident = convert_case(hint, case, CSharpIdentRules);
     disambiguate(&mut ident, |ident| {
         scopes.local.contains(ident) || scopes.global.contains(ident)
     });
 
     scopes.local.insert(ident.clone());
+    ident
+}
 
+fn make_field_ident(hint: &str, scopes: &mut Scopes, case: impl CaseType) -> String {
+    let mut ident = convert_case(hint, case, CSharpIdentRules);
+    disambiguate(&mut ident, |ident| scopes.local.contains(ident));
+
+    scopes.local.insert(ident.clone());
     ident
 }
 
@@ -53,7 +60,7 @@ pub fn name(TypeSet { types }: TypeSet<()>) -> TypeSet<CSharpMetadata> {
 
         let ident = match name_of(&r#type) {
             Some(ident) => ident.to_owned(),
-            None => make_ident(&name, &mut scopes, PascalCase),
+            None => make_type_ident(&name, &mut scopes, PascalCase),
         };
 
         local = scopes.local;
@@ -87,7 +94,7 @@ fn name_struct(
     hint: &str,
     scopes: &mut Scopes,
 ) -> Struct<CSharpMetadata> {
-    let ident = make_ident(hint, scopes, PascalCase);
+    let ident = make_type_ident(hint, scopes, PascalCase);
     let mut scopes = scopes.with_local([ident.clone()]);
 
     let mut named_fields = Vec::with_capacity(fields.len());
@@ -98,7 +105,7 @@ fn name_struct(
         metadata: (),
     } in fields
     {
-        let ident = make_ident(&name, &mut scopes, PascalCase);
+        let ident = make_field_ident(&name, &mut scopes, PascalCase);
         let r#type = name_type(r#type, &format!("{name} type"), &mut scopes);
 
         named_fields.push(Field {
@@ -122,7 +129,7 @@ fn name_enum(
     hint: &str,
     scopes: &mut Scopes,
 ) -> Enum<CSharpMetadata> {
-    let ident = make_ident(hint, scopes, PascalCase);
+    let ident = make_type_ident(hint, scopes, PascalCase);
     let mut scopes = scopes.with_local([ident.to_owned()]);
 
     let mut named_variants = Vec::with_capacity(variants.len());
@@ -133,7 +140,7 @@ fn name_enum(
         metadata: (),
     } in variants
     {
-        let ident = make_ident(&name, &mut scopes, PascalCase);
+        let ident = make_type_ident(&name, &mut scopes, PascalCase);
 
         let r#type = {
             let mut scopes = scopes.with_local([ident.to_owned(), "Value".to_owned()]);
