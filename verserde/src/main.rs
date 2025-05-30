@@ -1,7 +1,10 @@
-use std::io::{Result, stdout};
+use std::{
+    collections::HashSet,
+    io::{Result, stdout},
+};
 
 use c_sharp::idents::CSharpIdentRules;
-use idents::{CamelCase, PascalCase, convert_case};
+use idents::{CamelCase, PascalCase, convert_case, disambiguate};
 use source_writer::SourceWriter;
 
 pub mod ast;
@@ -68,6 +71,15 @@ fn main() -> Result<()> {
             convert_case(ident, CamelCase, CSharpIdentRules),
             convert_case(ident, PascalCase, CSharpIdentRules)
         );
+    }
+
+    let mut set = HashSet::new();
+
+    for _ in 0..10 {
+        let mut name = String::from("myName");
+        disambiguate(&mut name, &[&set]);
+        println!("{name}");
+        set.insert(name);
     }
 
     Ok(())

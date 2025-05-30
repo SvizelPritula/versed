@@ -1,3 +1,5 @@
+use std::{collections::HashSet, fmt::Write};
+
 use icu_properties::props::{
     BinaryProperty, EnumeratedProperty, GeneralCategory, GeneralCategoryGroup, Lowercase, Uppercase,
 };
@@ -67,6 +69,23 @@ pub fn convert_case(ident: &str, case: impl CaseType, rules: impl IdentRules) ->
     }
 
     string
+}
+
+pub fn disambiguate(ident: &mut String, taken: &[&HashSet<String>]) {
+    if taken.iter().all(|set| !set.contains(ident)) {
+        return;
+    }
+
+    let original_prefix = ident.len();
+    for num in 2usize.. {
+        write!(ident, "{num}").unwrap();
+
+        if taken.iter().all(|set| !set.contains(ident)) {
+            return;
+        }
+
+        ident.truncate(original_prefix);
+    }
 }
 
 pub struct PascalCamelCaseBuilder {
