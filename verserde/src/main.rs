@@ -1,8 +1,6 @@
-use std::{
-    io::{Result, stdout},
-};
+use std::io::{Result, stdout};
 
-use c_sharp::name;
+use c_sharp::{emit, name};
 use source_writer::SourceWriter;
 
 pub mod ast;
@@ -35,33 +33,5 @@ fn main() -> Result<()> {
 
     let types = name(types);
 
-    println!("{types:#?}");
-
-    let mut writer = SourceWriter::new(stdout().lock());
-
-    writer.write_fmt_nl(format_args!("public class {} {{", "User"))?;
-    writer.indent();
-    writer.write_fmt_nl(format_args!(
-        "public required string {} {{ get; set; }}",
-        "Name"
-    ))?;
-    writer.write_fmt_nl(format_args!(
-        "public required ContactType {} {{ get; set; }}",
-        "Contact"
-    ))?;
-    writer.nl()?;
-
-    writer.write_fmt_nl(format_args!("public class {} {{", "ContactType"))?;
-    writer.indent();
-    writer.write_fmt_nl(format_args!(
-        "public required string {} {{ get; set; }}",
-        "Email"
-    ))?;
-    writer.dedent();
-    writer.write_nl("}")?;
-
-    writer.dedent();
-    writer.write_nl("}")?;
-
-    Ok(())
+    emit(&types, &mut SourceWriter::new(stdout().lock()))
 }

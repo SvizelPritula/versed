@@ -1,8 +1,10 @@
 use crate::metadata::Metadata;
 
+pub use generation::emit;
 pub use idents::CSharpIdentRules;
 pub use naming::name;
 
+mod generation;
 mod idents;
 mod naming;
 
