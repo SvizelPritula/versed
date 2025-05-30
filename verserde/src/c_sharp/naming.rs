@@ -22,8 +22,8 @@ impl<'a> Scopes<'a> {
 
     fn copy<'b>(&'b mut self) -> Scopes<'b> {
         Scopes {
-            local: &mut self.local,
-            global: &mut self.global,
+            local: self.local,
+            global: self.global,
         }
     }
 }

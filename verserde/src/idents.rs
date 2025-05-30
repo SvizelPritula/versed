@@ -72,7 +72,7 @@ pub fn convert_case(ident: &str, case: impl CaseType, rules: impl IdentRules) ->
 }
 
 pub fn disambiguate(ident: &mut String, mut taken: impl FnMut(&str) -> bool) {
-    if !taken(&ident) {
+    if !taken(ident) {
         return;
     }
 
@@ -80,7 +80,7 @@ pub fn disambiguate(ident: &mut String, mut taken: impl FnMut(&str) -> bool) {
     for num in 2usize.. {
         write!(ident, "{num}").unwrap();
 
-        if !taken(&ident) {
+        if !taken(ident) {
             return;
         }
 

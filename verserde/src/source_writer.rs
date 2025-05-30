@@ -33,7 +33,7 @@ impl<Writer: Write> SourceWriter<Writer> {
             self.line_started = true;
 
             for _ in 0..self.indent_level {
-                self.writer.write(Self::INDENT.as_bytes())?;
+                self.writer.write_all(Self::INDENT.as_bytes())?;
             }
         }
 
@@ -41,20 +41,20 @@ impl<Writer: Write> SourceWriter<Writer> {
     }
 
     pub fn nl(&mut self) -> Result<()> {
-        self.writer.write(b"\n")?;
+        self.writer.write_all(b"\n")?;
         self.line_started = false;
         Ok(())
     }
 
     pub fn write(&mut self, str: &str) -> Result<()> {
         self.try_start_line()?;
-        self.writer.write(str.as_bytes())?;
+        self.writer.write_all(str.as_bytes())?;
         Ok(())
     }
 
     pub fn write_nl(&mut self, str: &str) -> Result<()> {
         self.try_start_line()?;
-        self.writer.write(str.as_bytes())?;
+        self.writer.write_all(str.as_bytes())?;
         self.nl()
     }
 
