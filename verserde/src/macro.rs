@@ -30,6 +30,9 @@ macro_rules! r#type {
             r#type: Box::new(r#type!($($t)*))
         })
     };
+    ([$($t:tt)*]) => {
+        $crate::ast::Type::<()>::List(Box::new(r#type!($($t)*)))
+    };
     (string) => {
         $crate::ast::Type::<()>::Primitive($crate::ast::Primitive::String)
     };

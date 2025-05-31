@@ -30,6 +30,10 @@ fn emit_declaration_if_needed(
         Type::Struct(r#struct) => emit_struct(r#struct, types, writer).map(|()| true),
         Type::Enum(r#enum) => emit_enum(r#enum, types, writer).map(|()| true),
         Type::Versioned(versioned) => emit_declaration_if_needed(&versioned.r#type, types, writer),
+        Type::List(inner) => {
+            emit_declaration_if_needed(&inner, types, writer)?;
+            Ok(false)
+        }
         Type::Primitive(_) => Ok(false),
         Type::Identifier(_) => Ok(false),
     }
@@ -104,6 +108,11 @@ fn write_type_name(
         Type::Struct(r#struct) => writer.write(&r#struct.metadata.ident),
         Type::Enum(r#enum) => writer.write(&r#enum.metadata.ident),
         Type::Versioned(versioned) => write_type_name(&versioned.r#type, types, writer),
+        Type::List(inner) => {
+            writer.write("System.Collections.Generic.List<")?;
+            write_type_name(&inner, types, writer)?;
+            writer.write(">")
+        }
         Type::Primitive(Primitive::Number) => writer.write("int"),
         Type::Primitive(Primitive::String) => writer.write("string"),
         Type::Primitive(Primitive::Unit) => writer.write("System.ValueTuple"),

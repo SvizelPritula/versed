@@ -5,6 +5,7 @@ pub enum Type<M: Metadata> {
     Struct(Struct<M>),
     Enum(Enum<M>),
     Versioned(Versioned<M>),
+    List(Box<Type<M>>),
     Primitive(Primitive),
     Identifier(String),
 }

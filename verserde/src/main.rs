@@ -16,11 +16,12 @@ fn main() -> Result<()> {
 
         User = (struct {
             name: Name,
+            tags: [string],
             age: (enum { age: number, unknown: unit }),
             contact: Contact
         });
 
-        Contact = (versioned enum {
+        Contact = (versioned [enum {
             phone: number,
             email: string,
             address: (struct {
@@ -28,7 +29,7 @@ fn main() -> Result<()> {
                 city: string,
                 country: string
             })
-        })
+        }])
     };
 
     let types = name(types);

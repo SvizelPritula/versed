@@ -81,6 +81,7 @@ fn name_type(r#type: Type<()>, hint: &str, scopes: &mut Scopes) -> Type<CSharpMe
         Type::Struct(r#struct) => Type::Struct(name_struct(r#struct, hint, scopes)),
         Type::Enum(r#enum) => Type::Enum(name_enum(r#enum, hint, scopes)),
         Type::Versioned(versioned) => Type::Versioned(name_versioned(versioned, hint, scopes)),
+        Type::List(inner) => Type::List(Box::new(name_type(*inner, hint, scopes))),
         Type::Primitive(primitive) => Type::Primitive(primitive),
         Type::Identifier(ident) => Type::Identifier(ident),
     }
@@ -175,6 +176,7 @@ fn name_of(r#type: &Type<CSharpMetadata>) -> Option<&str> {
         Type::Struct(r#struct) => Some(&r#struct.metadata.ident),
         Type::Enum(r#enum) => Some(&r#enum.metadata.ident),
         Type::Versioned(versioned) => name_of(&versioned.r#type),
+        Type::List(_) => None,
         Type::Primitive(_) => None,
         Type::Identifier(_) => None,
     }
