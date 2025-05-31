@@ -12,6 +12,7 @@ pub mod source_writer;
 
 fn main() -> Result<()> {
     let types = r#types! {
+        Names = [Name];
         Name = string;
 
         User = (struct {

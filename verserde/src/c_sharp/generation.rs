@@ -1,21 +1,24 @@
-use std::io::{Error, Result, Write};
+use std::{
+    collections::HashSet,
+    io::{Error, Result, Write},
+};
 
 use crate::{
-    ast::{Enum, Primitive, Struct, Type, TypeSet},
+    ast::{Enum, NamedType, Primitive, Struct, Type, TypeSet},
     source_writer::SourceWriter,
 };
 
 use super::CSharpMetadata;
 
 pub fn emit(types: &TypeSet<CSharpMetadata>, writer: &mut SourceWriter<impl Write>) -> Result<()> {
+    let mut emited_aliases = HashSet::new();
+
     for r#type in &types.types {
-        if !emit_declaration_if_needed(&r#type.r#type, types, writer)? {
-            writer.write("using ")?;
-            writer.write(&r#type.metadata.ident)?;
-            writer.write(" = ")?;
-            write_type_name(&r#type.r#type, types, writer)?;
-            writer.write_nl(";")?;
-        }
+        emit_alias_with_dependencies(r#type, types, writer, &mut emited_aliases)?;
+    }
+
+    for r#type in &types.types {
+        emit_declaration_if_needed(&r#type.r#type, types, writer)?;
     }
 
     Ok(())
@@ -25,17 +28,14 @@ fn emit_declaration_if_needed(
     r#type: &Type<CSharpMetadata>,
     types: &TypeSet<CSharpMetadata>,
     writer: &mut SourceWriter<impl Write>,
-) -> Result<bool> {
+) -> Result<()> {
     match r#type {
-        Type::Struct(r#struct) => emit_struct(r#struct, types, writer).map(|()| true),
-        Type::Enum(r#enum) => emit_enum(r#enum, types, writer).map(|()| true),
+        Type::Struct(r#struct) => emit_struct(r#struct, types, writer),
+        Type::Enum(r#enum) => emit_enum(r#enum, types, writer),
         Type::Versioned(versioned) => emit_declaration_if_needed(&versioned.r#type, types, writer),
-        Type::List(inner) => {
-            emit_declaration_if_needed(&inner, types, writer)?;
-            Ok(false)
-        }
-        Type::Primitive(_) => Ok(false),
-        Type::Identifier(_) => Ok(false),
+        Type::List(inner) => emit_declaration_if_needed(&inner, types, writer),
+        Type::Primitive(_) => Ok(()),
+        Type::Identifier(_) => Ok(()),
     }
 }
 
@@ -120,5 +120,68 @@ fn write_type_name(
             Some(named) => writer.write(&named.metadata.ident),
             None => Err(Error::other("unknown type name")), // TODO: Check this earlier
         },
+    }
+}
+
+fn emit_alias_if_needed(
+    r#type: &NamedType<CSharpMetadata>,
+    types: &TypeSet<CSharpMetadata>,
+    writer: &mut SourceWriter<impl Write>,
+) -> Result<()> {
+    if !has_intrinsic_name(&r#type.r#type) {
+        writer.write("using ")?;
+        writer.write(&r#type.metadata.ident)?;
+        writer.write(" = ")?;
+        write_type_name(&r#type.r#type, types, writer)?;
+        writer.write_nl(";")?;
+    }
+    Ok(())
+}
+
+fn emit_aliases_for_dependencies(
+    r#type: &Type<CSharpMetadata>,
+    types: &TypeSet<CSharpMetadata>,
+    writer: &mut SourceWriter<impl Write>,
+    emited_aliases: &mut HashSet<String>,
+) -> Result<()> {
+    match r#type {
+        Type::Struct(_) => Ok(()),
+        Type::Enum(_) => Ok(()),
+        Type::Versioned(versioned) => {
+            emit_aliases_for_dependencies(&versioned.r#type, types, writer, emited_aliases)
+        }
+        Type::List(inner) => emit_aliases_for_dependencies(&inner, types, writer, emited_aliases),
+        Type::Primitive(_) => Ok(()),
+        Type::Identifier(name) => {
+            match types.types.iter().find(|t| t.name == *name) {
+                Some(named) => emit_alias_with_dependencies(named, types, writer, emited_aliases),
+                None => Err(Error::other("unknown type name")), // TODO: Check this earlier
+            }
+        }
+    }
+}
+
+fn emit_alias_with_dependencies(
+    r#type: &NamedType<CSharpMetadata>,
+    types: &TypeSet<CSharpMetadata>,
+    writer: &mut SourceWriter<impl Write>,
+    emited_aliases: &mut HashSet<String>,
+) -> Result<()> {
+    if emited_aliases.insert(r#type.name.clone()) {
+        emit_aliases_for_dependencies(&r#type.r#type, types, writer, emited_aliases)?;
+        emit_alias_if_needed(&r#type, types, writer)?;
+    }
+
+    Ok(())
+}
+
+fn has_intrinsic_name(r#type: &Type<CSharpMetadata>) -> bool {
+    match r#type {
+        Type::Struct(_) => true,
+        Type::Enum(_) => true,
+        Type::Versioned(versioned) => has_intrinsic_name(&versioned.r#type),
+        Type::List(_) => false,
+        Type::Primitive(_) => false,
+        Type::Identifier(_) => false,
     }
 }
