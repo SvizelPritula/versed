@@ -1,7 +1,4 @@
-use std::{
-    collections::HashSet,
-    io::{Error, Result, Write},
-};
+use std::io::{Error, Result, Write};
 
 use crate::{
     ast::{Enum, NamedType, Primitive, Struct, Type, TypeSet},
@@ -11,10 +8,8 @@ use crate::{
 use super::CSharpMetadata;
 
 pub fn emit(types: &TypeSet<CSharpMetadata>, writer: &mut SourceWriter<impl Write>) -> Result<()> {
-    let mut emited_aliases = HashSet::new();
-
     for r#type in &types.types {
-        emit_alias_with_dependencies(r#type, types, writer, &mut emited_aliases)?;
+        emit_alias_if_needed(r#type, types, writer)?;
     }
 
     for r#type in &types.types {
@@ -33,7 +28,7 @@ fn emit_declaration_if_needed(
         Type::Struct(r#struct) => emit_struct(r#struct, types, writer),
         Type::Enum(r#enum) => emit_enum(r#enum, types, writer),
         Type::Versioned(versioned) => emit_declaration_if_needed(&versioned.r#type, types, writer),
-        Type::List(inner) => emit_declaration_if_needed(&inner, types, writer),
+        Type::List(inner) => emit_declaration_if_needed(inner, types, writer),
         Type::Primitive(_) => Ok(()),
         Type::Identifier(_) => Ok(()),
     }
@@ -104,20 +99,37 @@ fn write_type_name(
     types: &TypeSet<CSharpMetadata>,
     writer: &mut SourceWriter<impl Write>,
 ) -> Result<()> {
+    write_type_name_advanced(r#type, types, writer, false)
+}
+
+fn write_type_name_advanced(
+    r#type: &Type<CSharpMetadata>,
+    types: &TypeSet<CSharpMetadata>,
+    writer: &mut SourceWriter<impl Write>,
+    resolve_aliases: bool,
+) -> Result<()> {
     match r#type {
         Type::Struct(r#struct) => writer.write(&r#struct.metadata.ident),
         Type::Enum(r#enum) => writer.write(&r#enum.metadata.ident),
-        Type::Versioned(versioned) => write_type_name(&versioned.r#type, types, writer),
+        Type::Versioned(versioned) => {
+            write_type_name_advanced(&versioned.r#type, types, writer, resolve_aliases)
+        }
         Type::List(inner) => {
             writer.write("System.Collections.Generic.List<")?;
-            write_type_name(&inner, types, writer)?;
+            write_type_name_advanced(inner, types, writer, resolve_aliases)?;
             writer.write(">")
         }
         Type::Primitive(Primitive::Number) => writer.write("int"),
         Type::Primitive(Primitive::String) => writer.write("string"),
         Type::Primitive(Primitive::Unit) => writer.write("System.ValueTuple"),
         Type::Identifier(name) => match types.types.iter().find(|t| t.name == *name) {
-            Some(named) => writer.write(&named.metadata.ident),
+            Some(named) => {
+                if resolve_aliases {
+                    write_type_name_advanced(&named.r#type, types, writer, resolve_aliases)
+                } else {
+                    writer.write(&named.metadata.ident)
+                }
+            }
             None => Err(Error::other("unknown type name")), // TODO: Check this earlier
         },
     }
@@ -132,46 +144,9 @@ fn emit_alias_if_needed(
         writer.write("using ")?;
         writer.write(&r#type.metadata.ident)?;
         writer.write(" = ")?;
-        write_type_name(&r#type.r#type, types, writer)?;
+        write_type_name_advanced(&r#type.r#type, types, writer, true)?;
         writer.write_nl(";")?;
     }
-    Ok(())
-}
-
-fn emit_aliases_for_dependencies(
-    r#type: &Type<CSharpMetadata>,
-    types: &TypeSet<CSharpMetadata>,
-    writer: &mut SourceWriter<impl Write>,
-    emited_aliases: &mut HashSet<String>,
-) -> Result<()> {
-    match r#type {
-        Type::Struct(_) => Ok(()),
-        Type::Enum(_) => Ok(()),
-        Type::Versioned(versioned) => {
-            emit_aliases_for_dependencies(&versioned.r#type, types, writer, emited_aliases)
-        }
-        Type::List(inner) => emit_aliases_for_dependencies(&inner, types, writer, emited_aliases),
-        Type::Primitive(_) => Ok(()),
-        Type::Identifier(name) => {
-            match types.types.iter().find(|t| t.name == *name) {
-                Some(named) => emit_alias_with_dependencies(named, types, writer, emited_aliases),
-                None => Err(Error::other("unknown type name")), // TODO: Check this earlier
-            }
-        }
-    }
-}
-
-fn emit_alias_with_dependencies(
-    r#type: &NamedType<CSharpMetadata>,
-    types: &TypeSet<CSharpMetadata>,
-    writer: &mut SourceWriter<impl Write>,
-    emited_aliases: &mut HashSet<String>,
-) -> Result<()> {
-    if emited_aliases.insert(r#type.name.clone()) {
-        emit_aliases_for_dependencies(&r#type.r#type, types, writer, emited_aliases)?;
-        emit_alias_if_needed(&r#type, types, writer)?;
-    }
-
     Ok(())
 }
 

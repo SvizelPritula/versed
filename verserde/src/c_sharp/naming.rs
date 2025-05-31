@@ -15,7 +15,7 @@ struct Scopes<'a> {
 impl<'a> Scopes<'a> {
     fn with_local(&self, local: impl IntoIterator<Item = String>) -> Scopes<'a> {
         Scopes {
-            local: HashSet::from_iter(local.into_iter()),
+            local: HashSet::from_iter(local),
             global: self.global,
         }
     }
