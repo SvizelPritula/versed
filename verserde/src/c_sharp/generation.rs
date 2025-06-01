@@ -39,6 +39,7 @@ fn emit_struct(
     types: &TypeSet<CSharpMetadata>,
     writer: &mut SourceWriter<impl Write>,
 ) -> Result<()> {
+    writer.blank_line();
     writer.write_fmt_nl(format_args!("public class {} {{", r#struct.metadata.ident))?;
     writer.indent();
 
@@ -56,6 +57,7 @@ fn emit_struct(
 
     writer.dedent();
     writer.write_nl("}")?;
+    writer.blank_line();
 
     Ok(())
 }
@@ -65,6 +67,7 @@ fn emit_enum(
     types: &TypeSet<CSharpMetadata>,
     writer: &mut SourceWriter<impl Write>,
 ) -> Result<()> {
+    writer.blank_line();
     writer.write_fmt_nl(format_args!(
         "public abstract class {} {{",
         r#enum.metadata.ident
@@ -72,6 +75,7 @@ fn emit_enum(
     writer.indent();
 
     for variant in &r#enum.variants {
+        writer.blank_line();
         writer.write_fmt_nl(format_args!(
             "public abstract class {} : {} {{",
             variant.metadata.ident, r#enum.metadata.ident
@@ -86,10 +90,12 @@ fn emit_enum(
 
         writer.dedent();
         writer.write_nl("}")?;
+        writer.blank_line();
     }
 
     writer.dedent();
     writer.write_nl("}")?;
+    writer.blank_line();
 
     Ok(())
 }
