@@ -77,7 +77,7 @@ fn emit_enum(
     for variant in &r#enum.variants {
         writer.blank_line();
         writer.write_fmt_nl(format_args!(
-            "public abstract class {} : {} {{",
+            "public class {} : {} {{",
             variant.metadata.ident, r#enum.metadata.ident
         ))?;
         writer.indent();

@@ -1,4 +1,4 @@
-use std::io::{Result, stdout};
+use std::io::{BufWriter, Result, stdout};
 
 use c_sharp::{emit, name};
 use source_writer::SourceWriter;
@@ -35,5 +35,6 @@ fn main() -> Result<()> {
 
     let types = name(types);
 
-    emit(&types, &mut SourceWriter::new(stdout().lock()))
+    let writer = BufWriter::new(stdout().lock());
+    emit(&types, &mut SourceWriter::new(writer))
 }
