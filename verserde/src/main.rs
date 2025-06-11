@@ -11,7 +11,7 @@ pub mod metadata;
 pub mod source_writer;
 
 fn main() -> Result<()> {
-    let types = r#types! {
+    let types = types! {
         Names = [Name];
         Name = string;
 
