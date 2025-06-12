@@ -11,4 +11,8 @@ User user = new User
     }
 };
 
-new UserMetadata().Accept(new DebugWriterVisitor<User>(user, Console.Out, 0));
+foreach (int version in Enumerable.Range(1, 3))
+{
+    Console.WriteLine($"=== Version {version} ===");
+    new UserMetadata(version).Accept(new DebugWriterVisitor<User>(user, Console.Out, 0));
+}

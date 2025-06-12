@@ -2,13 +2,13 @@ namespace VisitorDemo;
 
 public class DebugWriterVisitor<T>(T value, TextWriter textWriter, int indentLevel) : ITypeVisitor<T>
 {
-    public void VisitInt() => textWriter.WriteLine(value);
-    public void VisitString() => textWriter.WriteLine(value);
+    public void VisitInt(Getter<T, int> get) => textWriter.WriteLine(get(value));
+    public void VisitString(Getter<T, string> get) => textWriter.WriteLine(get(value));
 
-    public void VisitStruct(IStructType<T> type)
+    public void VisitStruct<S, M>(Getter<T, S> get, M type) where M : IStructType<S>
     {
         textWriter.WriteLine("{");
-        type.Accept(new DebugWriterStructVisitor<T>(value, textWriter, indentLevel + 1));
+        type.Accept(new DebugWriterStructVisitor<S>(get(value), textWriter, indentLevel + 1));
         textWriter.Write(new string(' ', indentLevel * 2));
         textWriter.WriteLine("}");
     }
@@ -16,7 +16,7 @@ public class DebugWriterVisitor<T>(T value, TextWriter textWriter, int indentLev
 
 public class DebugWriterStructVisitor<T>(T value, TextWriter textWriter, int indentLevel) : IStructVisitor<T>
 {
-    public void VisitField<F>(string name, Func<T, F> get, Action<T, F> set, IType<F> visitor)
+    public void VisitField<F, M>(string name, Getter<T, F> get, M visitor) where M : IType<F>
     {
         textWriter.Write(new string(' ', indentLevel * 2));
         textWriter.Write(name);
