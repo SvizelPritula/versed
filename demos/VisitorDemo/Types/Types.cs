@@ -2,13 +2,13 @@ namespace VisitorDemo;
 
 public class User
 {
-    public required string Name { get; set; }
-    public required int Age { get; set; }
-    public required Contacts Contacts { get; set; }
+    public required string Name;
+    public required int Age;
+    public required Contacts Contacts;
 }
 
 public class Contacts
 {
-    public required string Email { get; set; }
-    public required string PhoneNumber { get; set; }
+    public required string Email;
+    public required string PhoneNumber;
 }

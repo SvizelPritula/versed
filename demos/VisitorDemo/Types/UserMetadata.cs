@@ -2,13 +2,13 @@ namespace VisitorDemo;
 
 public class UserMetadata(int version) : IType<User>, IStructType<User>
 {
-    public void Accept(ITypeVisitor<User> visitor) => visitor.VisitStruct(a => a, this);
+    public void Accept<V>(V visitor) where V : ITypeVisitor<User>, allows ref struct => visitor.VisitStruct(Getters.Identity, this);
 
-    public void Accept(IStructVisitor<User> visitor)
+    void IStructType<User>.Accept<V>(V visitor)
     {
-        visitor.VisitField("Name", s => s.Name, StringMetadata.Instance);
+        visitor.VisitField("Name", (ref User s) => ref s.Name, StringMetadata.Instance);
         if (version >= 2)
-            visitor.VisitField("Age", s => s.Age, IntMetadata.Instance);
-        visitor.VisitField("Contacts", s => s.Contacts, new VersionedContactsMetadata(version));
+            visitor.VisitField("Age", (ref User s) => ref s.Age, IntMetadata.Instance);
+        visitor.VisitField("Contacts", (ref User s) => ref s.Contacts, new VersionedContactsMetadata(version));
     }
 }

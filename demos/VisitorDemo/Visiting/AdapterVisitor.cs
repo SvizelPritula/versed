@@ -1,8 +1,10 @@
-using VisitorDemo;
+namespace VisitorDemo;
 
-public class AdapterVisitor<I, O>(ITypeVisitor<O> inner, Getter<O, I> map) : ITypeVisitor<I>
+public ref struct AdapterVisitor<I, O, V>(V inner, Getter<O, I> map) : ITypeVisitor<I> where V : ITypeVisitor<O>, allows ref struct
 {
-    public void VisitInt(Getter<I, int> get) => inner.VisitInt(v => get(map(v)));
-    public void VisitString(Getter<I, string> get) => inner.VisitString(v => get(map(v)));
-    public void VisitStruct<S, M>(Getter<I, S> get, M type) where M : IStructType<S> => inner.VisitStruct(v => get(map(v)), type);
+    readonly V storedInner = inner;
+
+    public void VisitInt(Getter<I, int> get) => storedInner.VisitInt(Getters.Compose(map, get));
+    public void VisitString(Getter<I, string> get) => storedInner.VisitString(Getters.Compose(map, get));
+    public void VisitStruct<S, M>(Getter<I, S> get, M type) where M : IStructType<S> => storedInner.VisitStruct(Getters.Compose(map, get), type);
 }
