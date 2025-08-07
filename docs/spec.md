@@ -1,6 +1,8 @@
 # Specifikace
 
-## Úvod a motivace
+## Základní informace o projektu
+
+### Úvod a motivace
 
 Ve svém volném čase občas programuji multiplayerové hry pro volnočasové akce, které mají podobu webové aplikace.
 Tyto aplikace mají frontend napsaný v TypeScriptu a backend napsaný v Rustu.
@@ -47,22 +49,206 @@ a to pomocí univerzálního jazyka na popis schéma a nástrojů, které umožn
 Snaha ale je ponechat volnou cestu k vyřešení i prvního problému,
 a to pomocí budoucího návrhu kompaktního datového formátu umožňující posílat změny.
 
-## Popis projektu
+### Popis projektu
 
-V rámci přípravy projektu byl navržen níže popsaný jazyk pro zápis *schéma*,
+V rámci projektu bude navržen jazyk pro zápis *schéma*,
 množiny algebraických datových typů myšlených pro ukládání a přenos informací
 po jejich serializaci do nějakého datového formátu.
 Cílem projektu je implementace *překladače*, programu, který zápis schéma v tomto jazyce přeloží do typů
-v běžném programovacím jazyce, v rámci tohoto projektu jen do jazyka Rust.
+v běžném programovacím jazyce, v rámci tohoto projektu jen do jazyka Rust a TypeScript.
 
 Druhou funkcí překladače bude pomoc se správou verzí schéma vytvářením migrací.
 Vygenerované datové typy umístí do jmenného prostoru pojmenovaného podle verze schéma.
 V případě, že vznikne nová verze schéma, umožní překladač do programu přidat typy pro tuto verzi,
-zatímco budou typy pro starou verzi zachovány.
+zatímco typy pro starou verzi budou zachovány.
 Dále automaticky vygeneruje *migrační funkce* pro všechny typy, které se od předchozí verze schéma nezměnili.
 Tyto funkce převedou typ z předchozí verze schéma na typ v nové verzi schéma, nebo naopak.
 Pro typy, které se změnili, vygeneruje signatury migračních funkcí.
 Programátorovi bude tedy stačit doplnit těla této hrstky funkcí.
+V rámci projektu budou migrace podporované jen v jazyce Rust.
 
-Nakonec překladač k vygenerovaným typům přidá atributy,
-které umožní typy serializovat a deserializovat pomocí knihovny `serde` do řady různých formátů.
+Nakonec překladač k vygenerovaným typům v Rustu přidá atributy,
+které umožní typy serializovat a deserializovat pomocí knihovny `serde` do řady různých formátů,
+mimo jiné JSON kompatibilní s vygenerovanými typy v TypeScriptu.
+
+### Hlavní funkce
+
+Program bude konzolová aplikace s dvěma hlavními funkcemi:
+
+- Generace typů v cílových jazycích na základě schéma.
+- Generace triviálních částí migračních funkcí na základě dvojice schémat.
+
+### Motivační příklad užití
+
+Vývojář chce naprogramovat část aplikace, ve které budou moci uživatelé spravovat svůj profil.
+Napíše následující popis schéma:
+_(Přesná syntaxe jazyka není finální.)_
+
+```
+version v1;
+
+User = struct {
+    name: string,
+    contact: Contact,
+};
+
+Contact = enum {
+    phone: number,
+    email: string,
+};
+```
+
+Backend aplikace bude posílat objekty typu `User` frontendu, ten je bude upravené posílat zpátky.
+Program vygeneruje následující typy:
+_(Podoba opět není finální.)_
+
+```rust
+pub mod v1 {
+    #[derive(Clone, Serialize, Deserialize)]
+    pub struct User {
+        pub name: String,
+        pub contact: Contact,
+    }
+
+    #[derive(Clone, Serialize, Deserialize)]
+    pub enum Contact {
+        Phone(i64),
+        Email(String),
+    }
+}
+```
+
+Později, po vydání aplikace, vývojář schéma upraví:
+
+```diff
+- version v1;
++ version v2;
+  
+  User = struct {
+      name: string,
++     age: enum { age: number, unknown },
+-     contact: Contact,
++     contact: [Contact],
+  };
+  
+  Contact = enum {
+      phone: number,
+      email: string,
+  };
+```
+
+Překladač vygeneruje nové typy, které vývojář do projektu přidá:
+
+```rust
+pub mod v2 {
+    pub struct User {
+        pub name: String,
+        pub age: UserAge,
+        pub contact: Vec<Contact>,
+    }
+
+    pub enum UserAge {
+        Age(i64),
+        Unknown,
+    }
+
+    pub enum Contact {
+        Phone(i64),
+        Email(String),
+    }
+}
+```
+
+Dále vygeneruje migrační funkce.
+Pro typ `Contact` je vygeneruje automaticky, protože se nezměnil,
+zatímco do funkcí pro typ `User` bude potřeba nějaký kód doplnit:
+_(Podoba opět není finální.)_
+
+```rust
+fn upgrade_user(user: v1::User) -> v2::User {
+    let v1::User { name, contact } = user;
+
+    v2::User {
+        name,
+        age: todo!(),
+        contact: todo!(),
+    }
+}
+
+fn downgrade_user(user: v2::User) -> v1::User {
+    let v2::User { name, age, contact } = user;
+
+    v1::User {
+        name,
+        contact: todo!(),
+    }
+}
+
+fn upgrade_contact(contact: v1::Contact) -> v2::Contact {
+    match contact {
+        v1::Contact::Phone(phone) => v2::Contact::Phone(phone),
+        v1::Contact::Email(email) => v2::Contact::Email(email),
+    }
+}
+
+fn downgrade_contact(contact: v2::Contact) -> v1::Contact {
+    match contact {
+        v2::Contact::Phone(phone) => v1::Contact::Phone(phone),
+        v2::Contact::Email(email) => v1::Contact::Email(email),
+    }
+}
+```
+
+Programátor pak funkce `upgrade_user` a `downgrade_user` doplní třeba takto:
+
+```rust
+fn upgrade_user(user: v1::User) -> v2::User {
+    let v1::User { name, contact } = user;
+
+    v2::User {
+        name,
+        age: v2::UserAge::Unknown,
+        contact: vec![upgrade_contact(contact)],
+    }
+}
+
+fn downgrade_user(user: v2::User) -> v1::User {
+    let v2::User { name, age, contact } = user;
+
+    v1::User {
+        name,
+        contact: todo!(),
+    }
+}
+```
+
+## Technická stránka projektu
+
+### Použité technologie
+
+Projekt bude implementován v jazyce Rust.
+Bude podporovat generování kódu pro následující jazyky:
+
+- Rust
+- TypeScript
+
+V jazyce Rust je k serializaci zamýšleno užití knihovny [`serde`](https://serde.rs/),
+v jazyce TypeScript je zamýšleno užití standardní knihovny, konkrétně objektu `JSON`.
+
+### Prostředí aplikace
+
+Program bude odladěn pro instrukční sadu x86-64 a operační systém Linux,
+tedy cíl `x86_64-unknown-linux-gnu` překladače Rustu.
+Nic by ale nemělo bránit tomu, aby program šel sestavit a spustit na jakékoliv platformě
+s [podporou Rustu](https://doc.rust-lang.org/stable/rustc/platform-support.html)
+úrovně _Tier 1 with Host Tools_ nebo _Tier 2 with Host Tools_.
+
+## Uživatelské rozhraní programu
+
+Překladač bude implementován jako konzolová aplikace s více podpříkazy.
+Každý příkaz odpovídá jedné funkci projektu a je tedy popsán v popisu příslušné funkce.
+Obecně každý příkaz jako argumenty dostane
+cestu k jednomu nebo více souborům obsahujících popis schématu,
+název cílového jazyka a cestu ke složce uvnitř projektu, kam má uložit vygenerované soubory.
+Jakékoliv potkané chyby, zejména chyby v syntaxi nebo sémantice schématu,
+vypíše program na standardní chybový výstup.
