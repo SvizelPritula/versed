@@ -15,7 +15,7 @@ Při vývoji těchto aplikací jsem narazil na tři problémy spojené s výměn
 
 První z nich spočívá v tom, že jsou přenášené objekty poměrně velké.
 V dnešní době je sice možné po internetu poslat opravdu hodně dat,
-ale větší objem dat může zvýšit latenci hry a lidem hrajících hru mimo dosah WiFi může plýtvat mobilní data.
+ale větší objem dat může zvýšit latenci hry a lidem hrajících hru mimo dosah Wi-Fi může plýtvat mobilní data.
 Částečným řešením tohoto problému by bylo místo JSON používat nějaký kompaktní, binární formát.
 Dále by pomohlo nepřenášet po každé změně celý stav hry, ale jen ty části, které se změnili.
 
@@ -252,6 +252,7 @@ Bude podporovat generování kódu pro následující jazyky:
 
 V jazyce Rust je k serializaci zamýšleno užití knihovny [Serde](https://serde.rs/),
 v jazyce TypeScript je zamýšleno užití standardní knihovny, konkrétně objektu `JSON`.
+Dále má překladač volitelnou integraci s [Git](https://git-scm.com/).
 
 ### Prostředí aplikace
 
@@ -261,7 +262,10 @@ Nic by ale nemělo bránit tomu, aby program šel sestavit a spustit na jakékol
 s [podporou Rustu](https://doc.rust-lang.org/stable/rustc/platform-support.html)
 úrovně _Tier 1 with Host Tools_ nebo _Tier 2 with Host Tools_.
 
-## Uživatelské rozhraní programu
+Pro volitelnou integraci s Git bude pochopitelně potřeba mít nainstalován příkaz `git`,
+a to ve složce uvedené v proměnné `PATH` dle zvyklostí operačního systému.
+
+### Uživatelské rozhraní programu
 
 Překladač bude implementován jako konzolová aplikace s několika podpříkazy.
 Každý příkaz odpovídá jedné funkci projektu a je tedy popsán v popisu příslušné funkce.
@@ -270,3 +274,94 @@ cestu k jednomu nebo více souborům obsahujících popis schématu,
 název cílového jazyka a cestu ke složce uvnitř projektu, kam má uložit vygenerované soubory.
 Jakékoliv potkané chyby, zejména chyby v syntaxi nebo sémantice schématu,
 vypíše program na standardní chybový výstup.
+
+## Popis funkcionality
+
+### Formát schéma
+
+Použitý datový model vychází z algebraických datových typů.
+Datový model bude podporovat několik primitivních datových typů pro čísla a řetězce.
+Také bude podporovat tzv. jednotkový datový typ (někdy značený `()`).
+Dále bude podporovat pole, jehož prvky mají definovaný typ.
+
+Nakonec bude podporovat dva druhy uživatelských datových typů, `struct` a `enum`.
+`struct` se skládá z několika pojmenovaných polí, každé se svým typem.
+Každé z polí má svoji vlastní hodnotu, jedná se tedy o kartézský součin jednotlivých typů.
+`enum` má několik pojmenovaných variant, každá také se svým typem.
+`enum` se vždy nachází jen v jedné ze svých variant a ukládá hodnotu typu této varianty.
+Jedná se tedy o analogii disjunktního průniku.
+
+Celé schéma se skládá z množiny typů, každý z nich (jinak) pojmenovaný.
+Je možné se odkazovat na pojmenované typy, typy mohou být i rekurzivní.
+Schéma tedy může vypadat například takto:
+
+```
+version v1;
+
+Address = string;
+DeliveryLocation = enum {
+    address: Address,
+    parcelLocker: struct { 
+        locker: number,
+        box: number,
+    },
+    store: unit,
+};
+Item = struct { item: string, count: number };
+Order = struct {
+    location: DeliveryLocation,
+    items: [Item],
+};
+```
+
+Na začátku schéma musí být uvedená jeho verze.
+Překladač bude mít podpříkaz, který jen zkontroluje,
+že je zadaný soubor syntakticky a sémanticky korektní.
+
+### Generování typů
+
+Překladač bude mít příkaz, který schéma převede na typy v Rustu nebo TypeScriptu.
+Jako argument dostane cestu k schéma a složku, ve které vytvoří soubor pojmenovaný dle verze
+a do něj typy uloží.
+Volitelně může dostat jako argument místo toho přímo cestu k souboru.
+
+Každému pojmenovanému typu ve schéma bude odpovídat jeden typ v cílovém jazyce.
+Jména typů, polí a variant budou převedena do notace konvenčně používané v cílovém jazyce,
+např. Pascal Case pro názvy variant v Rustu.
+
+V jazyce Rust budou pojmenované všechny uživatelské typy, i ty, které v schéma jméno neměly,
+jejich jméno bude určené automaticky z názvu rodičovského typu a relevantního pole nebo varianty.
+Do typového systému Rustu jdou všechny typy přeložit přímočaře.
+Typy budou anotované atributy, které zajistí kompatibilitu po serializaci do JSON
+s typy v TypeScriptu.
+
+TypeScript nemá přímý ekvivalent pro `enum`,
+`enum` tedy bude převedeno na sjednocení typů tvaru `{ type: "<varianta>", value: <typ> }`.
+
+### Generování migrací
+
+Překladač bude mít příkaz, který pro dvě verze schématu připraví migrační funkce v Rustu.
+Jako argumenty dostane cesty ke dvěma souborům, které obsahují dvě různé verze schématu.
+Poslední argument bude opět cesta ke složce nebo souboru, kam vygenerovaný kód uložit.
+
+Překladač obě verze schématu porovná.
+Pro typy přítomné v obou verzích vygeneruje migrační funkce.
+Do migračních funkcí typů se změnami bude potřeba kusy kódu doplnit.
+Do kódu funkcí pro nezměněné typy zasahovat potřeba nebude,
+a tyto funkce budou umístěné na konci souboru.
+
+### Integrace s Git
+
+Kdykoliv překladač akceptuje jako argument cestu k souboru se schématem,
+tak bude možné pomocí přepínače nastavit referenci na commit, ze kterého má soubor přečíst.
+V tom případě (a pouze v tom případě) překladač použije příkaz `git`,
+aby přečetl danou revizi souboru.
+V tom případě musí cesta vést dovnitř Gitového repositáře.
+
+## Negativní vymezení
+
+Součástí projektu *není* návrh datového formátu,
+ani implementace serializace či deserializace JSON.
+Součástí projektu také není kontrola, zda objekt odpovídá schématu.
+Součástí projektu také není návrh protokolu,
+pomocí kterého se obě strany komunikace domluví na použité verzi.
