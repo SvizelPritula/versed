@@ -7,44 +7,7 @@ use chumsky::{
     text::{digits, ident, whitespace},
 };
 
-use crate::syntax::{Span, Spanned};
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum Token {
-    Ident(String),
-    QuotedIdent(String),
-
-    GroupLeft(Group),
-    GroupRight(Group),
-
-    Punct(Punct),
-    Keyword(Keyword),
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Group {
-    Paren,
-    Bracket,
-    Brace,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Punct {
-    Equals,
-    Colon,
-    Comma,
-    Semicolon,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Keyword {
-    Version,
-    Struct,
-    Enum,
-    Unit,
-    String,
-    Int,
-}
+use crate::syntax::{tokens::{Group, Keyword, Punct, Token}, Span, Spanned};
 
 pub type Error<'src> = Rich<'src, char, Span>;
 
