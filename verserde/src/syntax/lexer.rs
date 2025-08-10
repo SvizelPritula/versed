@@ -1,10 +1,10 @@
 use chumsky::{
     IterParser, Parser,
+    container::Container,
     error::Rich,
     extra,
-    prelude::{any, choice, just, none_of, via_parser},
-    select,
-    text::{digits, ident},
+    prelude::{any, choice, empty, just, none_of, via_parser},
+    text::{digits, ident, whitespace},
 };
 
 use crate::syntax::{Span, Spanned};
@@ -46,8 +46,9 @@ pub enum Keyword {
     Int,
 }
 
-pub fn lexer<'src>()
--> impl Parser<'src, &'src str, Vec<Spanned<Token>>, extra::Err<Rich<'src, char, Span>>> {
+pub type Error<'src> = Rich<'src, char, Span>;
+
+pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<Spanned<Token>>, extra::Err<Error<'src>>> {
     let ident_like = ident().map(|s: &str| match s {
         "version" => Token::Keyword(Keyword::Version),
         "struct" => Token::Keyword(Keyword::Struct),
@@ -59,9 +60,32 @@ pub fn lexer<'src>()
         ident => Token::Ident(ident.to_owned()),
     });
 
+    // Structure of string parsing inspired by Rust, code inspired by the official JSON example
+
     const REPLACEMENT_CHARACTER: char = '\u{FFFD}';
 
-    // Structure inspired by Rust, code inspired by the official JSON example
+    let unicode_escape = digits(16)
+        .at_least(1)
+        .at_most(6)
+        .to_slice()
+        .validate(|digits, e, emitter| {
+            let code = u32::from_str_radix(digits, 16).unwrap();
+            if let Some(c) = char::from_u32(code) {
+                c
+            } else {
+                emitter.emit(Rich::custom(
+                    e.span(),
+                    format!("there is no unicode character with code 0x{code:x}",),
+                ));
+
+                REPLACEMENT_CHARACTER
+            }
+        })
+        .delimited_by(
+            just('{'),
+            just('}').ignored().recover_with(via_parser(empty())),
+        );
+
     let string_escape = just('\\').ignore_then(
         choice((
             just('\\'),
@@ -70,34 +94,12 @@ pub fn lexer<'src>()
             just('n').to('\n'),
             just('r').to('\r'),
             just('t').to('\t'),
-            just('u').ignore_then(
-                digits(16)
-                    .at_least(1)
-                    .at_most(6)
-                    .to_slice()
-                    .validate(|digits, e, emitter| {
-                        let code = u32::from_str_radix(digits, 16).unwrap();
-                        if let Some(c) = char::from_u32(code) {
-                            c
-                        } else {
-                            emitter.emit(Rich::custom(
-                                e.span(),
-                                format!("there is no unicode character with code 0x{code:x}",),
-                            ));
-
-                            REPLACEMENT_CHARACTER
-                        }
-                    })
-                    .recover_with(via_parser(
-                        none_of("}\\\"").repeated().to(REPLACEMENT_CHARACTER),
-                    ))
-                    .delimited_by(just('{'), just('}')),
-            ),
+            just('u').ignore_then(unicode_escape),
         ))
         .recover_with(via_parser(any())),
     );
 
-    let string_char = none_of("\\\"")
+    let string_char = none_of("\\\"\r\n")
         .validate(|c: char, e, emitter| {
             if c.is_control() {
                 emitter.emit(Rich::custom(
@@ -118,27 +120,59 @@ pub fn lexer<'src>()
         .repeated()
         .collect()
         .map(Token::QuotedIdent)
-        .delimited_by(just('"'), just('"'));
+        .delimited_by(
+            just('"'),
+            just('"')
+                .ignored()
+                .recover_with(via_parser(none_of("\r\n").repeated())),
+        );
 
-    let punct_or_group = select! {
-        '=' => Token::Punct(Punct::Equals),
-        ':' => Token::Punct(Punct::Colon),
-        ',' => Token::Punct(Punct::Comma),
-        ';' => Token::Punct(Punct::Semicolon),
-        '(' => Token::GroupLeft(Group::Paren),
-        ')' => Token::GroupRight(Group::Paren),
-        '[' => Token::GroupLeft(Group::Bracket),
-        ']' => Token::GroupRight(Group::Bracket),
-        '{' => Token::GroupLeft(Group::Brace),
-        '}' => Token::GroupRight(Group::Brace),
-    };
+    let punct_or_group = choice([
+        just('=').to(Token::Punct(Punct::Equals)),
+        just(':').to(Token::Punct(Punct::Colon)),
+        just(',').to(Token::Punct(Punct::Comma)),
+        just(';').to(Token::Punct(Punct::Semicolon)),
+        just('(').to(Token::GroupLeft(Group::Paren)),
+        just(')').to(Token::GroupRight(Group::Paren)),
+        just('[').to(Token::GroupLeft(Group::Bracket)),
+        just(']').to(Token::GroupRight(Group::Bracket)),
+        just('{').to(Token::GroupLeft(Group::Brace)),
+        just('}').to(Token::GroupRight(Group::Brace)),
+    ]);
 
     let token = choice((ident_like, quoted_ident, punct_or_group));
+    let skip = whitespace();
 
-    token
+    let body = token
         .map_with(|tok, e| (tok, e.span()))
-        .padded()
+        .map(Some)
+        .recover_with(via_parser(any().to(None)))
+        .then_ignore(skip)
         .repeated()
         .collect()
-        .padded()
+        .map(|ExtendVec(inner)| inner);
+
+    skip.ignore_then(body)
+}
+
+#[derive(Debug, Clone)]
+struct ExtendVec<T>(Vec<T>);
+
+impl<T> Default for ExtendVec<T> {
+    fn default() -> Self {
+        Self(vec![])
+    }
+}
+
+impl<I, T> Container<I> for ExtendVec<T>
+where
+    I: IntoIterator<Item = T>,
+{
+    fn push(&mut self, item: I) {
+        self.0.extend(item);
+    }
+
+    fn with_capacity(n: usize) -> Self {
+        Self(Vec::with_capacity(n))
+    }
 }
