@@ -141,7 +141,10 @@ pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<Spanned<Token>>, extra:
     ]);
 
     let token = choice((ident_like, quoted_ident, punct_or_group));
-    let skip = whitespace();
+
+    let comment = just("//").ignore_then(none_of("\r\n").repeated());
+
+    let skip = whitespace().then(comment.then_ignore(whitespace()).repeated());
 
     let body = token
         .map_with(|tok, e| (tok, e.span()))
