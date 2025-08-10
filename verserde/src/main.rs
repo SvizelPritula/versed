@@ -1,9 +1,8 @@
 use std::io::{Read, Result, stdin};
 
 use ariadne::sources;
-use chumsky::{Parser, input::Input};
 
-use crate::syntax::{lexer::lexer, make_report, parser::parser};
+use crate::{ast::TypeSet, syntax::parse};
 
 pub mod ast;
 pub mod c_sharp;
@@ -17,25 +16,15 @@ fn main() -> Result<()> {
     stdin().lock().read_to_string(&mut src)?;
     let filename = "input";
 
-    let (tokens, errors) = lexer().parse(&src).into_output_errors();
-    for error in errors {
-        make_report(error, filename).print(sources([(filename, &src)]))?
+    let (types, reports) = parse(&src, filename);
+
+    for report in reports {
+        report.print(sources([(filename, &src)]))?;
     }
 
-    if let Some(tokens) = tokens {
-        let tokens = tokens
-            .as_slice()
-            .map((src.len()..src.len()).into(), |(t, s)| (t, s));
-
-        let (ast, errors) = parser().parse(tokens).into_output_errors();
-        for error in errors {
-            make_report(error, filename).print(sources([(filename, &src)]))?
-        }
-
-        if let Some((version, types)) = ast {
-            println!("Version: {version}");
-            println!("Types: {types:#?}");
-        }
+    if let Some(TypeSet { types, version }) = types {
+        println!("Version: {version}");
+        println!("Types: {types:#?}");
     }
 
     Ok(())

@@ -40,7 +40,7 @@ pub enum Keyword {
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Token::Ident(ident) | Token::QuotedIdent(ident) => f.write_str(&ident),
+            Token::Ident(ident) | Token::QuotedIdent(ident) => f.write_str(ident),
             Token::GroupLeft(Group::Paren) => f.write_char('('),
             Token::GroupLeft(Group::Bracket) => f.write_char('['),
             Token::GroupLeft(Group::Brace) => f.write_char('{'),

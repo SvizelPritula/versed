@@ -8,7 +8,7 @@ use chumsky::{
 };
 
 use crate::{
-    ast::{Enum, Field, NamedType, Primitive, Struct, Type, Variant},
+    ast::{Enum, Field, NamedType, Primitive, Struct, Type, TypeSet, Variant},
     syntax::{
         Span,
         tokens::{Group, Keyword, Punct, Token},
@@ -47,7 +47,7 @@ fn right<'tokens, I: Input<'tokens>>(group: Group) -> Parser![Token] {
     just(Token::GroupRight(group))
 }
 
-pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![(String, Vec<NamedType<()>>)] {
+pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<()>] {
     let version = keyword(Keyword::Version)
         .ignore_then(ident())
         .then_ignore(punct(Punct::Semicolon));
@@ -139,5 +139,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![(String, Vec<NamedType<()
 
     let types = named_type.repeated().collect();
 
-    version.then(types)
+    version
+        .then(types)
+        .map(|(version, types)| TypeSet { version, types })
 }

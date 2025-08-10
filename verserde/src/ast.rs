@@ -44,6 +44,7 @@ pub enum Primitive {
 
 #[derive(Debug, Clone)]
 pub struct TypeSet<M: Metadata> {
+    pub version: String,
     pub types: Vec<NamedType<M>>,
 }
 

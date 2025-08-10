@@ -39,7 +39,7 @@ fn make_field_ident(hint: &str, scopes: &mut Scopes, case: impl CaseType) -> Str
     ident
 }
 
-pub fn name(TypeSet { types }: TypeSet<()>) -> TypeSet<CSharpMetadata> {
+pub fn name(TypeSet { types, version }: TypeSet<()>) -> TypeSet<CSharpMetadata> {
     let mut named_types = Vec::with_capacity(types.len());
 
     let mut global = HashSet::new();
@@ -73,7 +73,10 @@ pub fn name(TypeSet { types }: TypeSet<()>) -> TypeSet<CSharpMetadata> {
         });
     }
 
-    TypeSet { types: named_types }
+    TypeSet {
+        types: named_types,
+        version,
+    }
 }
 
 fn name_type(r#type: Type<()>, hint: &str, scopes: &mut Scopes) -> Type<CSharpMetadata> {
