@@ -1,39 +1,41 @@
-use std::io::{BufWriter, Result, stdout};
+use std::io::{Read, Result, stdin};
 
-use c_sharp::{emit, name};
-use codegen::source_writer::SourceWriter;
+use ariadne::{Color, Label, Report, ReportKind, Source};
+use chumsky::Parser;
+
+use crate::syntax::lexer::lexer;
 
 pub mod ast;
 pub mod c_sharp;
 pub mod codegen;
 pub mod r#macro;
 pub mod metadata;
+pub mod syntax;
 
 fn main() -> Result<()> {
-    let types = types! {
-        Names = [Name];
-        Name = string;
+    let mut src = String::new();
+    stdin().lock().read_to_string(&mut src)?;
 
-        User = (struct {
-            name: Name,
-            tags: [string],
-            age: (enum { age: number, unknown: unit }),
-            contact: Contact
-        });
+    let (tokens, errs) = lexer().parse(&src).into_output_errors();
 
-        Contact = [enum {
-            phone: number,
-            email: string,
-            address: (struct {
-                street: string,
-                city: string,
-                country: string
-            })
-        }]
-    };
+    for error in errs {
+        Report::build(ReportKind::Error, error.span().into_range())
+            .with_config(ariadne::Config::new().with_index_type(ariadne::IndexType::Byte))
+            .with_message(error.to_string())
+            .with_label(
+                Label::new(error.span().into_range())
+                    .with_message(error.reason().to_string())
+                    .with_color(Color::Red),
+            )
+            .finish()
+            .print(Source::from(&src))?
+    }
 
-    let types = name(types);
+    if let Some(tokens) = tokens {
+        for (token, _span) in tokens {
+            println!("{token:?}");
+        }
+    }
 
-    let writer = BufWriter::new(stdout().lock());
-    emit(&types, &mut SourceWriter::new(writer))
+    Ok(())
 }

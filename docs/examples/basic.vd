@@ -1,11 +1,13 @@
+version v1;
+
 User = struct {
     name: string,
-    age: enum { age: number, unknown },
+    age: enum { age: int, unknown },
     contact: [Contact],
 };
 
 Contact = enum {
-    phone: number,
+    phone: int,
     email: string,
     address: struct {
         street: string,
