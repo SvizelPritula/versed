@@ -17,24 +17,39 @@ use crate::{
 
 pub type Error<'tokens> = Rich<'tokens, Token, Span>;
 
-pub fn parser<'tokens, 'src: 'tokens, I>()
--> impl Parser<'tokens, I, (String, Vec<NamedType<()>>), extra::Err<Error<'tokens>>> + Clone
-where
-    I: ValueInput<'tokens, Token = Token, Span = Span>,
-{
-    let ident = select! {
+macro_rules! Parser {
+    [$type: ty] => {
+        impl Parser<'tokens, I, $type, extra::Err<Error<'tokens>>> + Clone
+    };
+}
+
+pub trait Input<'tokens>: ValueInput<'tokens, Token = Token, Span = Span> {}
+impl<'tokens, I: ValueInput<'tokens, Token = Token, Span = Span>> Input<'tokens> for I {}
+
+fn ident<'tokens, I: Input<'tokens>>() -> Parser![String] {
+    select! {
         Token::Ident(ident) => ident,
         Token::QuotedIdent(ident) => ident,
     }
-    .labelled("identifier");
+    .labelled("identifier")
+}
 
-    let keyword = |keyword| just(Token::Keyword(keyword));
-    let punct = |punct| just(Token::Punct(punct));
-    let left = |group| just(Token::GroupLeft(group));
-    let right = |group| just(Token::GroupRight(group));
+fn keyword<'tokens, I: Input<'tokens>>(keyword: Keyword) -> Parser![Token] {
+    just(Token::Keyword(keyword))
+}
+fn punct<'tokens, I: Input<'tokens>>(punct: Punct) -> Parser![Token] {
+    just(Token::Punct(punct))
+}
+fn left<'tokens, I: Input<'tokens>>(group: Group) -> Parser![Token] {
+    just(Token::GroupLeft(group))
+}
+fn right<'tokens, I: Input<'tokens>>(group: Group) -> Parser![Token] {
+    just(Token::GroupRight(group))
+}
 
+pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![(String, Vec<NamedType<()>>)] {
     let version = keyword(Keyword::Version)
-        .ignore_then(ident)
+        .ignore_then(ident())
         .then_ignore(punct(Punct::Semicolon));
 
     let r#type = recursive(|r#type| {
@@ -48,48 +63,71 @@ where
             keyword(Keyword::String).to(Type::Primitive(Primitive::String)),
         ]);
 
-        let identifier = ident.map(Type::Identifier);
+        let identifier = ident().map(Type::Identifier);
 
         let list = r#type
             .clone()
             .delimited_by(left(Group::Bracket), right(Group::Bracket));
 
-        macro_rules! composite {
-            ($keyword: path, $type: ident, $field: ident, $fields_name: ident) => {{
-                let field = ident
-                    .then(
-                        punct(Punct::Colon)
-                            .ignore_then(r#type.clone())
-                            .or(empty().to(Type::Primitive(Primitive::Unit))),
-                    )
-                    .map(|(name, r#type)| $field {
-                        name,
-                        r#type,
-                        metadata: (),
-                    });
+        fn composite<'tokens, I: Input<'tokens>, F, T>(
+            leading_keyword: Keyword,
+            map_field: impl Fn((String, Type<()>)) -> F + Clone,
+            map_type: impl Fn(Vec<F>) -> T + Clone,
+            r#type: Parser![Type<()>],
+        ) -> Parser![T] {
+            let field = ident()
+                .then(
+                    punct(Punct::Colon)
+                        .ignore_then(r#type.clone())
+                        .or(empty().to(Type::Primitive(Primitive::Unit))),
+                )
+                .map(map_field);
 
-                let body = field
-                    .separated_by(punct(Punct::Comma))
-                    .allow_trailing()
-                    .collect()
-                    .delimited_by(left(Group::Brace), right(Group::Brace));
+            let body = field
+                .separated_by(punct(Punct::Comma))
+                .allow_trailing()
+                .collect()
+                .delimited_by(left(Group::Brace), right(Group::Brace));
 
-                keyword($keyword).ignore_then(body).map(|$fields_name| {
-                    Type::$type($type {
-                        $fields_name,
-                        metadata: (),
-                    })
-                })
-            }};
+            keyword(leading_keyword).ignore_then(body).map(map_type)
         }
 
-        let r#struct = composite!(Keyword::Struct, Struct, Field, fields);
-        let r#enum = composite!(Keyword::Enum, Enum, Variant, variants);
+        let r#struct = composite(
+            Keyword::Struct,
+            |(name, r#type)| Field {
+                name,
+                r#type,
+                metadata: (),
+            },
+            |fields| {
+                Type::Struct(Struct {
+                    fields,
+                    metadata: (),
+                })
+            },
+            r#type.clone(),
+        );
+
+        let r#enum = composite(
+            Keyword::Enum,
+            |(name, r#type)| Variant {
+                name,
+                r#type,
+                metadata: (),
+            },
+            |variants| {
+                Type::Enum(Enum {
+                    variants,
+                    metadata: (),
+                })
+            },
+            r#type.clone(),
+        );
 
         choice((parens, list, r#struct, r#enum, primitive, identifier))
     });
 
-    let named_type = ident
+    let named_type = ident()
         .then_ignore(punct(Punct::Equals))
         .then(r#type.clone())
         .then_ignore(punct(Punct::Semicolon))
