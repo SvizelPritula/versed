@@ -1,6 +1,6 @@
 use icu_properties::props::{EnumeratedProperty, GeneralCategory, GeneralCategoryGroup};
 
-use crate::idents::IdentRules;
+use crate::codegen::idents::IdentRules;
 
 pub struct CSharpIdentRules;
 

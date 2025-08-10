@@ -1,14 +1,13 @@
 use std::io::{BufWriter, Result, stdout};
 
 use c_sharp::{emit, name};
-use source_writer::SourceWriter;
+use codegen::source_writer::SourceWriter;
 
 pub mod ast;
 pub mod c_sharp;
-pub mod idents;
+pub mod codegen;
 pub mod r#macro;
 pub mod metadata;
-pub mod source_writer;
 
 fn main() -> Result<()> {
     let types = types! {

@@ -2,7 +2,7 @@ use std::io::{Error, Result, Write};
 
 use crate::{
     ast::{Enum, NamedType, Primitive, Struct, Type, TypeSet},
-    source_writer::SourceWriter,
+    codegen::source_writer::SourceWriter,
 };
 
 use super::CSharpMetadata;

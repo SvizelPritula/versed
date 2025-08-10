@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::{
     ast::{Enum, Field, NamedType, Struct, Type, TypeSet, Variant},
-    idents::{CaseType, PascalCase, convert_case, disambiguate},
+    codegen::idents::{CaseType, PascalCase, convert_case, disambiguate},
 };
 
 use super::{CSharpMetadata, IdentMetadata, idents::CSharpIdentRules};
