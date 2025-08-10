@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    ast::{Enum, Field, NamedType, Struct, Type, TypeSet, Variant, Versioned},
+    ast::{Enum, Field, NamedType, Struct, Type, TypeSet, Variant},
     idents::{CaseType, PascalCase, convert_case, disambiguate},
 };
 
@@ -80,7 +80,6 @@ fn name_type(r#type: Type<()>, hint: &str, scopes: &mut Scopes) -> Type<CSharpMe
     match r#type {
         Type::Struct(r#struct) => Type::Struct(name_struct(r#struct, hint, scopes)),
         Type::Enum(r#enum) => Type::Enum(name_enum(r#enum, hint, scopes)),
-        Type::Versioned(versioned) => Type::Versioned(name_versioned(versioned, hint, scopes)),
         Type::List(inner) => Type::List(Box::new(name_type(*inner, hint, scopes))),
         Type::Primitive(primitive) => Type::Primitive(primitive),
         Type::Identifier(ident) => Type::Identifier(ident),
@@ -161,21 +160,10 @@ fn name_enum(
     }
 }
 
-fn name_versioned(
-    Versioned { r#type }: Versioned<()>,
-    hint: &str,
-    scopes: &mut Scopes,
-) -> Versioned<CSharpMetadata> {
-    Versioned {
-        r#type: Box::new(name_type(*r#type, hint, scopes)),
-    }
-}
-
 fn name_of(r#type: &Type<CSharpMetadata>) -> Option<&str> {
     match r#type {
         Type::Struct(r#struct) => Some(&r#struct.metadata.ident),
         Type::Enum(r#enum) => Some(&r#enum.metadata.ident),
-        Type::Versioned(versioned) => name_of(&versioned.r#type),
         Type::List(_) => None,
         Type::Primitive(_) => None,
         Type::Identifier(_) => None,

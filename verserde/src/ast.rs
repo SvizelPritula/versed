@@ -4,7 +4,6 @@ use crate::metadata::Metadata;
 pub enum Type<M: Metadata> {
     Struct(Struct<M>),
     Enum(Enum<M>),
-    Versioned(Versioned<M>),
     List(Box<Type<M>>),
     Primitive(Primitive),
     Identifier(String),
@@ -34,12 +33,6 @@ pub struct Variant<M: Metadata> {
     pub name: String,
     pub r#type: Type<M>,
     pub metadata: M::Variant,
-}
-
-#[derive(Debug, Clone)]
-pub struct Versioned<M: Metadata> {
-    pub r#type: Box<Type<M>>,
-    // TODO: Add versioning metadata
 }
 
 #[derive(Debug, Clone, Copy)]

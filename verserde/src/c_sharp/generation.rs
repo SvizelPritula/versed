@@ -27,7 +27,6 @@ fn emit_declaration_if_needed(
     match r#type {
         Type::Struct(r#struct) => emit_struct(r#struct, types, writer),
         Type::Enum(r#enum) => emit_enum(r#enum, types, writer),
-        Type::Versioned(versioned) => emit_declaration_if_needed(&versioned.r#type, types, writer),
         Type::List(inner) => emit_declaration_if_needed(inner, types, writer),
         Type::Primitive(_) => Ok(()),
         Type::Identifier(_) => Ok(()),
@@ -117,9 +116,6 @@ fn write_type_name_advanced(
     match r#type {
         Type::Struct(r#struct) => writer.write(&r#struct.metadata.ident),
         Type::Enum(r#enum) => writer.write(&r#enum.metadata.ident),
-        Type::Versioned(versioned) => {
-            write_type_name_advanced(&versioned.r#type, types, writer, resolve_aliases)
-        }
         Type::List(inner) => {
             writer.write("System.Collections.Generic.List<")?;
             write_type_name_advanced(inner, types, writer, resolve_aliases)?;
@@ -160,7 +156,6 @@ fn has_intrinsic_name(r#type: &Type<CSharpMetadata>) -> bool {
     match r#type {
         Type::Struct(_) => true,
         Type::Enum(_) => true,
-        Type::Versioned(versioned) => has_intrinsic_name(&versioned.r#type),
         Type::List(_) => false,
         Type::Primitive(_) => false,
         Type::Identifier(_) => false,

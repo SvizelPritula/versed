@@ -22,7 +22,7 @@ fn main() -> Result<()> {
             contact: Contact
         });
 
-        Contact = (versioned [enum {
+        Contact = [enum {
             phone: number,
             email: string,
             address: (struct {
@@ -30,7 +30,7 @@ fn main() -> Result<()> {
                 city: string,
                 country: string
             })
-        }])
+        }]
     };
 
     let types = name(types);

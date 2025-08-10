@@ -25,11 +25,6 @@ macro_rules! r#type {
             metadata: ()
         })
     };
-    (versioned $($t:tt)*) => {
-        $crate::ast::Type::<()>::Versioned($crate::ast::Versioned {
-            r#type: Box::new(r#type!($($t)*))
-        })
-    };
     ([$($t:tt)*]) => {
         $crate::ast::Type::<()>::List(Box::new(r#type!($($t)*)))
     };
