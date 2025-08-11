@@ -1,13 +1,12 @@
 use chumsky::{
     IterParser, Parser,
-    container::Container,
     error::Rich,
     extra,
     prelude::{any, choice, empty, just, none_of, via_parser},
     text::{digits, ident, whitespace},
 };
 
-use crate::syntax::{tokens::{Group, Keyword, Punct, Token}, Span, Spanned};
+use crate::syntax::{tokens::{Group, Keyword, Punct, Token}, ExtendVec, Span, Spanned};
 
 pub type Error<'src> = Rich<'src, char, Span>;
 
@@ -119,26 +118,4 @@ pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<Spanned<Token>>, extra:
         .map(|ExtendVec(inner)| inner);
 
     skip.ignore_then(body)
-}
-
-#[derive(Debug, Clone)]
-struct ExtendVec<T>(Vec<T>);
-
-impl<T> Default for ExtendVec<T> {
-    fn default() -> Self {
-        Self(vec![])
-    }
-}
-
-impl<I, T> Container<I> for ExtendVec<T>
-where
-    I: IntoIterator<Item = T>,
-{
-    fn push(&mut self, item: I) {
-        self.0.extend(item);
-    }
-
-    fn with_capacity(n: usize) -> Self {
-        Self(Vec::with_capacity(n))
-    }
 }

@@ -1,7 +1,7 @@
 use std::{fmt::Display, ops::Range};
 
 use ariadne::{Color, Label, Report, ReportKind};
-use chumsky::{Parser, error::Rich, input::Input, span::SimpleSpan};
+use chumsky::{container::Container, error::Rich, input::Input, span::SimpleSpan, Parser};
 
 use crate::{
     ast::TypeSet,
@@ -56,4 +56,26 @@ pub fn make_report<'src, 'tokens, T: Display>(
                 .with_color(Color::Red),
         )
         .finish()
+}
+
+#[derive(Debug, Clone)]
+struct ExtendVec<T>(Vec<T>);
+
+impl<T> Default for ExtendVec<T> {
+    fn default() -> Self {
+        Self(vec![])
+    }
+}
+
+impl<I, T> Container<I> for ExtendVec<T>
+where
+    I: IntoIterator<Item = T>,
+{
+    fn push(&mut self, item: I) {
+        self.0.extend(item);
+    }
+
+    fn with_capacity(n: usize) -> Self {
+        Self(Vec::with_capacity(n))
+    }
 }

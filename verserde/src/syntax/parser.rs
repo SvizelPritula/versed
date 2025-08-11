@@ -1,16 +1,16 @@
 use chumsky::{
-    IterParser, Parser,
+    ConfigParser, IterParser, Parser,
     error::Rich,
     extra,
     input::ValueInput,
-    prelude::{choice, empty, just, recursive},
+    prelude::{any, choice, empty, just, recursive, skip_until, via_parser},
     select,
 };
 
 use crate::{
     ast::{Enum, Field, NamedType, Primitive, Struct, Type, TypeSet, Variant},
     syntax::{
-        Span,
+        ExtendVec, Span,
         tokens::{Group, Keyword, Punct, Token},
     },
 };
@@ -47,6 +47,34 @@ fn right<'tokens, I: Input<'tokens>>(group: Group) -> Parser![Token] {
     just(Token::GroupRight(group))
 }
 
+/// Matches any token or a bracketed expression (without semicolons),
+/// but doesn't allow for semicolons, as those cannot appear within types
+/// and are used to synchronize broken named types.
+fn single_or_group<'tokens, I: Input<'tokens>>() -> Parser![()] {
+    recursive(|single_or_group| {
+        let single = any()
+            .filter(|t| {
+                !matches!(
+                    t,
+                    Token::GroupLeft(_) | Token::GroupRight(_) | Token::Punct(Punct::Semicolon)
+                )
+            })
+            .ignored();
+
+        let group = select! {
+            Token::GroupLeft(group) => group
+        }
+        .then_ignore(single_or_group.repeated())
+        .ignore_with_ctx(
+            just(Token::Punct(Punct::Semicolon))
+                .configure(|cfg, ctx| cfg.seq(Token::GroupRight(*ctx))),
+        )
+        .ignored();
+
+        choice((single, group))
+    })
+}
+
 pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<()>] {
     let version = keyword(Keyword::Version)
         .ignore_then(ident())
@@ -79,14 +107,37 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<()>] {
                 .then(
                     punct(Punct::Colon)
                         .ignore_then(r#type.clone())
-                        .or(empty().to(Type::Primitive(Primitive::Unit))),
+                        .or(punct(Punct::Colon)
+                            .not()
+                            .to(Type::Primitive(Primitive::Unit))),
                 )
                 .map(map_field);
 
+            let skip_to_comma = skip_until(
+                single_or_group(),
+                punct(Punct::Comma).rewind().ignored(),
+                || None,
+            );
+            let skip_to_brace = via_parser(
+                single_or_group()
+                    .repeated()
+                    .at_least(1)
+                    .then_ignore(right(Group::Brace).rewind())
+                    .map(|()| None),
+            );
+
             let body = field
-                .separated_by(punct(Punct::Comma))
+                .map(Some)
+                .recover_with(skip_to_comma)
+                .recover_with(skip_to_brace)
+                .separated_by(
+                    punct(Punct::Comma)
+                        .ignored()
+                        .recover_with(via_parser(right(Group::Brace).not())),
+                )
                 .allow_trailing()
                 .collect()
+                .map(|ExtendVec(inner)| inner)
                 .delimited_by(left(Group::Brace), right(Group::Brace));
 
             keyword(leading_keyword).ignore_then(body).map(map_type)
@@ -130,14 +181,27 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<()>] {
     let named_type = ident()
         .then_ignore(punct(Punct::Equals))
         .then(r#type.clone())
-        .then_ignore(punct(Punct::Semicolon))
+        .then_ignore(
+            punct(Punct::Semicolon)
+                .ignored()
+                .recover_with(via_parser(empty())),
+        )
         .map(|(name, r#type)| NamedType {
             name,
             r#type,
             metadata: (),
         });
 
-    let types = named_type.repeated().collect();
+    let types = named_type
+        .map(Some)
+        .recover_with(skip_until(
+            any().ignored(),
+            punct(Punct::Semicolon).ignored(),
+            || None,
+        ))
+        .repeated()
+        .collect()
+        .map(|ExtendVec(inner)| inner);
 
     version
         .then(types)
