@@ -6,7 +6,7 @@ use std::{
     process::ExitCode,
 };
 
-use anstream::stderr;
+use anstream::{stderr, stdout};
 use anstyle::{AnsiColor, Color, Style};
 use ariadne::Source;
 use clap::{Parser, Subcommand};
@@ -37,6 +37,11 @@ enum Command {
         /// The path to the file to check
         file: PathBuf,
     },
+    /// Print the schema version from the header of a schema file
+    Version {
+        /// The path to the schema file
+        file: PathBuf,
+    },
 }
 
 mod exit_codes {
@@ -51,6 +56,18 @@ fn main() -> ExitCode {
     match args.command {
         Command::Check { file } => match load_file(&file) {
             Ok(_) => ExitCode::SUCCESS,
+            Err(code) => code,
+        },
+        Command::Version { file } => match load_file(&file) {
+            Ok(TypeSet { version, .. }) => {
+                let result = writeln!(stdout().lock(), "{version}").inspect_err(print_error);
+
+                if result.is_ok() {
+                    ExitCode::SUCCESS
+                } else {
+                    ExitCode::from(exit_codes::IO)
+                }
+            }
             Err(code) => code,
         },
     }
