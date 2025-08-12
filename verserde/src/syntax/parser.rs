@@ -77,8 +77,18 @@ fn single_or_group<'tokens, I: Input<'tokens>>() -> Parser![()] {
 
 pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
     let version = keyword(Keyword::Version)
-        .ignore_then(ident())
-        .then_ignore(punct(Punct::Semicolon));
+        .ignore_then(
+            ident()
+                .recover_with(via_parser(single_or_group().map(|_| "".into())))
+                .recover_with(via_parser(empty().map(|()| "".into())))
+                .then_ignore(
+                    punct(Punct::Semicolon)
+                        .ignored()
+                        .recover_with(via_parser(ident().rewind().to(()))),
+                )
+                .recover_with(via_parser(empty().map(|()| "".into()))),
+        )
+        .recover_with(via_parser(empty().map(|()| "".into())));
 
     let r#type = recursive(|r#type| {
         let parens = r#type
