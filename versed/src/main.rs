@@ -23,9 +23,9 @@ pub mod r#macro;
 pub mod metadata;
 pub mod syntax;
 
-/// A tool for generating DTO's and migrations from schema descriptions
+/// A tool for generating DTO's and their migrations from schema descriptions
 #[derive(Parser, Debug)]
-#[command(author, version)]
+#[command(version)]
 struct Args {
     #[command(subcommand)]
     command: Command,

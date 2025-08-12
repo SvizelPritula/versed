@@ -2,6 +2,9 @@
 name = "versed"
 version = "0.0.1"
 edition = "2024"
+license = "Apache-2.0"
+description = "A tool for generating DTO's and their migrations from schema descriptions"
+categories = ["command-line-utilities", "development-tools", "encoding"]
 
 [dependencies]
 anstream = "0.6.20"
