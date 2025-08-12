@@ -17,9 +17,10 @@ pub struct IdentMetadata {
 pub struct CSharpMetadata;
 
 impl Metadata for CSharpMetadata {
-    type Name = IdentMetadata;
     type Struct = IdentMetadata;
-    type Field = IdentMetadata;
     type Enum = IdentMetadata;
+    type Identifier = ();
+    type Name = IdentMetadata;
+    type Field = IdentMetadata;
     type Variant = IdentMetadata;
 }

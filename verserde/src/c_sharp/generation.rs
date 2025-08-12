@@ -124,7 +124,7 @@ fn write_type_name_advanced(
         Type::Primitive(Primitive::Number) => writer.write("int"),
         Type::Primitive(Primitive::String) => writer.write("string"),
         Type::Primitive(Primitive::Unit) => writer.write("System.ValueTuple"),
-        Type::Identifier(name) => match types.types.iter().find(|t| t.name == *name) {
+        Type::Identifier(ident) => match types.types.iter().find(|t| t.name == ident.ident) {
             Some(named) => {
                 if resolve_aliases {
                     write_type_name_advanced(&named.r#type, types, writer, resolve_aliases)

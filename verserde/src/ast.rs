@@ -6,7 +6,7 @@ pub enum Type<M: Metadata> {
     Enum(Enum<M>),
     List(Box<Type<M>>),
     Primitive(Primitive),
-    Identifier(String),
+    Identifier(Identifier<M>),
 }
 
 #[derive(Debug, Clone)]
@@ -40,6 +40,12 @@ pub enum Primitive {
     String,
     Number,
     Unit,
+}
+
+#[derive(Debug, Clone)]
+pub struct Identifier<M: Metadata> {
+    pub ident: String,
+    pub metadata: M::Identifier,
 }
 
 #[derive(Debug, Clone)]

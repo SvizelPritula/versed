@@ -11,7 +11,10 @@ use anstyle::{AnsiColor, Color, Style};
 use ariadne::Source;
 use clap::{Parser, Subcommand};
 
-use crate::{ast::TypeSet, syntax::parse};
+use crate::{
+    ast::TypeSet,
+    syntax::{SpanMetadata, parse},
+};
 
 pub mod ast;
 pub mod c_sharp;
@@ -81,7 +84,7 @@ fn print_error<E: Display>(error: &E) {
 }
 
 /// Loads and parses the file, printing any errors
-fn load_file(file: &Path) -> Result<TypeSet<()>, ExitCode> {
+fn load_file(file: &Path) -> Result<TypeSet<SpanMetadata>, ExitCode> {
     let filename = file.to_string_lossy();
     let src = fs::read_to_string(file)
         .inspect_err(print_error)

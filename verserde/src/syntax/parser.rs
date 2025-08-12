@@ -8,9 +8,9 @@ use chumsky::{
 };
 
 use crate::{
-    ast::{Enum, Field, NamedType, Primitive, Struct, Type, TypeSet, Variant},
+    ast::{Enum, Field, Identifier, NamedType, Primitive, Struct, Type, TypeSet, Variant},
     syntax::{
-        ExtendVec, Span,
+        ExtendVec, IdentSpan, Span, SpanMetadata,
         tokens::{Group, Keyword, Punct, Token},
     },
 };
@@ -75,7 +75,7 @@ fn single_or_group<'tokens, I: Input<'tokens>>() -> Parser![()] {
     })
 }
 
-pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<()>] {
+pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
     let version = keyword(Keyword::Version)
         .ignore_then(ident())
         .then_ignore(punct(Punct::Semicolon));
@@ -91,7 +91,12 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<()>] {
             keyword(Keyword::String).to(Type::Primitive(Primitive::String)),
         ]);
 
-        let identifier = ident().map(Type::Identifier);
+        let identifier = ident().map_with(|ident, e| {
+            Type::Identifier(Identifier {
+                ident,
+                metadata: IdentSpan { span: e.span() },
+            })
+        });
 
         let list = r#type
             .clone()
@@ -99,9 +104,9 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<()>] {
 
         fn composite<'tokens, I: Input<'tokens>, F, T>(
             leading_keyword: Keyword,
-            map_field: impl Fn((String, Type<()>)) -> F + Clone,
+            map_field: impl Fn((String, Type<SpanMetadata>)) -> F + Clone,
             map_type: impl Fn(Vec<F>) -> T + Clone,
-            r#type: Parser![Type<()>],
+            r#type: Parser![Type<SpanMetadata>],
         ) -> Parser![T] {
             let field = ident()
                 .then(
@@ -179,6 +184,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<()>] {
     });
 
     let named_type = ident()
+        .map_with(|ident, e| (ident, e.span()))
         .then_ignore(punct(Punct::Equals))
         .then(r#type.clone())
         .then_ignore(
@@ -186,10 +192,10 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<()>] {
                 .ignored()
                 .recover_with(via_parser(empty())),
         )
-        .map(|(name, r#type)| NamedType {
+        .map(|((name, span), r#type)| NamedType {
             name,
             r#type,
-            metadata: (),
+            metadata: IdentSpan { span },
         });
 
     let types = named_type

@@ -1,10 +1,11 @@
 use std::{fmt::Display, ops::Range};
 
 use ariadne::{Color, Label, Report, ReportKind};
-use chumsky::{container::Container, error::Rich, input::Input, span::SimpleSpan, Parser};
+use chumsky::{Parser, container::Container, error::Rich, input::Input, span::SimpleSpan};
 
 use crate::{
     ast::TypeSet,
+    metadata::Metadata,
     syntax::{lexer::lexer, parser::parser},
 };
 
@@ -19,7 +20,7 @@ pub fn parse<'src, 'filename>(
     src: &'src str,
     filename: &'filename str,
 ) -> (
-    Option<TypeSet<()>>,
+    Option<TypeSet<SpanMetadata>>,
     Vec<Report<'static, (&'filename str, Range<usize>)>>,
 ) {
     let mut reports = Vec::new();
@@ -43,7 +44,7 @@ pub fn parse<'src, 'filename>(
     (result, reports)
 }
 
-pub fn make_report<'src, 'tokens, T: Display>(
+fn make_report<'src, 'tokens, T: Display>(
     error: Rich<'src, T>,
     filename: &'tokens str,
 ) -> Report<'static, (&'tokens str, Range<usize>)> {
@@ -56,6 +57,23 @@ pub fn make_report<'src, 'tokens, T: Display>(
                 .with_color(Color::Red),
         )
         .finish()
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct IdentSpan {
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct SpanMetadata;
+impl Metadata for SpanMetadata {
+    type Struct = ();
+    type Enum = ();
+    type Identifier = IdentSpan;
+
+    type Name = IdentSpan;
+    type Field = ();
+    type Variant = ();
 }
 
 #[derive(Debug, Clone)]

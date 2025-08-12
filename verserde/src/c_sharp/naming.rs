@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    ast::{Enum, Field, NamedType, Struct, Type, TypeSet, Variant},
+    ast::{Enum, Field, Identifier, NamedType, Struct, Type, TypeSet, Variant},
     codegen::idents::{CaseType, PascalCase, convert_case, disambiguate},
 };
 
@@ -85,7 +85,9 @@ fn name_type(r#type: Type<()>, hint: &str, scopes: &mut Scopes) -> Type<CSharpMe
         Type::Enum(r#enum) => Type::Enum(name_enum(r#enum, hint, scopes)),
         Type::List(inner) => Type::List(Box::new(name_type(*inner, hint, scopes))),
         Type::Primitive(primitive) => Type::Primitive(primitive),
-        Type::Identifier(ident) => Type::Identifier(ident),
+        Type::Identifier(Identifier { ident, metadata }) => {
+            Type::Identifier(Identifier { ident, metadata })
+        }
     }
 }
 
