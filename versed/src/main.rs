@@ -13,7 +13,8 @@ use clap::{Parser, Subcommand};
 
 use crate::{
     ast::TypeSet,
-    syntax::{SpanMetadata, parse},
+    name_resolution::{ResolutionMetadata, resolve_and_check},
+    syntax::parse,
 };
 
 pub mod ast;
@@ -21,6 +22,7 @@ pub mod c_sharp;
 pub mod codegen;
 pub mod r#macro;
 pub mod metadata;
+pub mod name_resolution;
 pub mod syntax;
 
 /// A tool for generating DTO's and their migrations from schema descriptions
@@ -84,16 +86,24 @@ fn print_error<E: Display>(error: &E) {
 }
 
 /// Loads and parses the file, printing any errors
-fn load_file(file: &Path) -> Result<TypeSet<SpanMetadata>, ExitCode> {
+fn load_file(file: &Path) -> Result<TypeSet<ResolutionMetadata>, ExitCode> {
     let filename = file.to_string_lossy();
     let src = fs::read_to_string(file)
         .inspect_err(print_error)
         .map_err(|_| ExitCode::from(exit_codes::IO))?;
 
-    let (ast, reports) = parse(&src, &filename);
-    let has_errors = !reports.is_empty();
+    let (ast, mut reports) = parse(&src, &filename);
 
-    if !reports.is_empty() {
+    let ast = if let Some(ast) = ast {
+        let (ast, new_reports) = resolve_and_check(ast, &filename);
+        reports.extend(new_reports);
+        Some(ast)
+    } else {
+        None
+    };
+
+    let has_errors = !reports.is_empty();
+    if has_errors {
         let mut stream = BufWriter::new(stderr().lock());
         let mut cache = (filename.as_ref(), Source::from(src.as_str()));
 
