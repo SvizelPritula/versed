@@ -6,7 +6,10 @@ use chumsky::{
     text::{digits, ident, whitespace},
 };
 
-use crate::syntax::{tokens::{Group, Keyword, Punct, Token}, ExtendVec, Span, Spanned};
+use crate::syntax::{
+    ExtendVec, Span, Spanned,
+    tokens::{Group, Keyword, Punct, Token},
+};
 
 pub type Error<'src> = Rich<'src, char, Span>;
 

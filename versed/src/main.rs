@@ -2,13 +2,14 @@ use std::{
     fmt::Display,
     fs,
     io::{BufWriter, Write},
+    ops::Range,
     path::{Path, PathBuf},
     process::ExitCode,
 };
 
 use anstream::{stderr, stdout};
 use anstyle::{AnsiColor, Color, Style};
-use ariadne::Source;
+use ariadne::{Report, Source};
 use clap::{Parser, Subcommand};
 
 use crate::{
@@ -84,6 +85,8 @@ fn print_error<E: Display>(error: &E) {
     let mut stream = BufWriter::new(stderr().lock());
     let _ = writeln!(stream, "{STYLE}Error:{STYLE:#} {error}");
 }
+
+type Reports<'filename> = Vec<Report<'static, (&'filename str, Range<usize>)>>;
 
 /// Loads and parses the file, printing any errors
 fn load_file(file: &Path) -> Result<TypeSet<ResolutionMetadata>, ExitCode> {

@@ -4,6 +4,7 @@ use ariadne::{Color, Label, Report, ReportKind};
 use chumsky::{Parser, container::Container, error::Rich, input::Input, span::SimpleSpan};
 
 use crate::{
+    Reports,
     ast::TypeSet,
     metadata::Metadata,
     syntax::{lexer::lexer, parser::parser},
@@ -16,16 +17,13 @@ pub mod tokens;
 pub type Span = SimpleSpan;
 pub type Spanned<T> = (T, Span);
 
-pub fn parse<'src, 'filename>(
-    src: &'src str,
+pub fn parse<'filename>(
+    src: &str,
     filename: &'filename str,
-) -> (
-    Option<TypeSet<SpanMetadata>>,
-    Vec<Report<'static, (&'filename str, Range<usize>)>>,
-) {
+) -> (Option<TypeSet<SpanMetadata>>, Reports<'filename>) {
     let mut reports = Vec::new();
 
-    let (tokens, errors) = lexer().parse(&src).into_output_errors();
+    let (tokens, errors) = lexer().parse(src).into_output_errors();
     reports.extend(errors.into_iter().map(|error| make_report(error, filename)));
 
     let result = if let Some(tokens) = tokens {

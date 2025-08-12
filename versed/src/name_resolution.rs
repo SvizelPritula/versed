@@ -6,6 +6,7 @@ use std::{
 use ariadne::{Color, Label, Report, ReportKind};
 
 use crate::{
+    Reports,
     ast::{Enum, Field, Identifier, NamedType, Struct, Type, TypeSet, Variant},
     metadata::Metadata,
     syntax::{Span, SpanMetadata},
@@ -17,13 +18,10 @@ struct NameInfo {
     span: Span,
 }
 
-pub fn resolve_and_check<'filename>(
+pub fn resolve_and_check(
     TypeSet { version, types }: TypeSet<SpanMetadata>,
-    filename: &'filename str,
-) -> (
-    TypeSet<ResolutionMetadata>,
-    Vec<Report<'static, (&'filename str, Range<usize>)>>,
-) {
+    filename: &'_ str,
+) -> (TypeSet<ResolutionMetadata>, Reports<'_>) {
     let mut names: HashMap<String, NameInfo> = HashMap::new();
     let mut reports = Vec::new();
 
@@ -70,7 +68,7 @@ fn resolve_type<'filename>(
     r#type: Type<SpanMetadata>,
     names: &HashMap<String, NameInfo>,
     filename: &'filename str,
-    reports: &mut Vec<Report<'static, (&'filename str, Range<usize>)>>,
+    reports: &mut Reports<'filename>,
 ) -> Type<ResolutionMetadata> {
     match r#type {
         Type::Struct(Struct {
@@ -160,11 +158,11 @@ impl Metadata for ResolutionMetadata {
     type Variant = ();
 }
 
-fn make_simple_report<'filename>(
+fn make_simple_report(
     error: String,
     span: Span,
-    filename: &'filename str,
-) -> Report<'static, (&'filename str, Range<usize>)> {
+    filename: &str,
+) -> Report<'static, (&str, Range<usize>)> {
     Report::build(ReportKind::Error, (filename, span.into_range()))
         .with_config(ariadne::Config::new().with_index_type(ariadne::IndexType::Byte))
         .with_message(error.clone())
@@ -176,14 +174,14 @@ fn make_simple_report<'filename>(
         .finish()
 }
 
-fn make_double_label_report<'filename>(
+fn make_double_label_report(
     error: String,
     primary_label: String,
     primary_span: Span,
     secondary_label: String,
     secondary_span: Span,
-    filename: &'filename str,
-) -> Report<'static, (&'filename str, Range<usize>)> {
+    filename: &str,
+) -> Report<'static, (&str, Range<usize>)> {
     Report::build(ReportKind::Error, (filename, primary_span.into_range()))
         .with_config(ariadne::Config::new().with_index_type(ariadne::IndexType::Byte))
         .with_message(error)
