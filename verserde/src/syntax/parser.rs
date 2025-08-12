@@ -196,7 +196,11 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
     let named_type = ident()
         .map_with(|ident, e| (ident, e.span()))
         .then_ignore(punct(Punct::Equals))
-        .then(r#type.clone())
+        .then(r#type.clone().recover_with(skip_until(
+            any().ignored(),
+            punct(Punct::Semicolon).rewind().ignored(),
+            || Type::Primitive(Primitive::Unit),
+        )))
         .then_ignore(
             punct(Punct::Semicolon)
                 .ignored()
