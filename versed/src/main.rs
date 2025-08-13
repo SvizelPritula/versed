@@ -23,7 +23,7 @@ pub mod metadata;
 pub mod name_resolution;
 pub mod syntax;
 
-/// A tool for generating DTO's and their migrations from schema descriptions
+/// A tool for generating DTOs and their migrations from schema descriptions
 #[derive(Parser, Debug)]
 #[command(version)]
 struct Args {
