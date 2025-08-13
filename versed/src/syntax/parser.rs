@@ -3,7 +3,7 @@ use chumsky::{
     error::Rich,
     extra,
     input::ValueInput,
-    prelude::{any, choice, empty, just, recursive, skip_until, via_parser},
+    prelude::{any, choice, empty, end, just, recursive, skip_until, via_parser},
     select,
 };
 
@@ -198,7 +198,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
         .then_ignore(punct(Punct::Equals))
         .then(r#type.clone().recover_with(skip_until(
             any().ignored(),
-            punct(Punct::Semicolon).rewind().ignored(),
+            punct(Punct::Semicolon).rewind().ignored().or(end()),
             || Type::Primitive(Primitive::Unit),
         )))
         .then_ignore(
@@ -218,6 +218,9 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
             any().ignored(),
             punct(Punct::Semicolon).ignored(),
             || None,
+        ))
+        .recover_with(via_parser(
+            any().repeated().at_least(1).then(end()).to(None),
         ))
         .repeated()
         .collect()
