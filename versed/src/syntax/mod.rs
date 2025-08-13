@@ -70,8 +70,8 @@ impl Metadata for SpanMetadata {
     type Identifier = IdentSpan;
 
     type Name = IdentSpan;
-    type Field = ();
-    type Variant = ();
+    type Field = IdentSpan;
+    type Variant = IdentSpan;
 }
 
 #[derive(Debug, Clone)]

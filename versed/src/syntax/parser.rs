@@ -114,11 +114,12 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
 
         fn composite<'tokens, I: Input<'tokens>, F, T>(
             leading_keyword: Keyword,
-            map_field: impl Fn((String, Type<SpanMetadata>)) -> F + Clone,
+            map_field: impl Fn(String, Type<SpanMetadata>, Span) -> F + Clone,
             map_type: impl Fn(Vec<F>) -> T + Clone,
             r#type: Parser![Type<SpanMetadata>],
         ) -> Parser![T] {
             let field = ident()
+                .map_with(|ident, e| (ident, e.span()))
                 .then(
                     punct(Punct::Colon)
                         .ignore_then(r#type.clone())
@@ -126,7 +127,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
                             .not()
                             .to(Type::Primitive(Primitive::Unit))),
                 )
-                .map(map_field);
+                .map(move |((ident, span), r#type)| map_field(ident, r#type, span));
 
             let skip_to_comma = skip_until(
                 single_or_group(),
@@ -160,10 +161,10 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
 
         let r#struct = composite(
             Keyword::Struct,
-            |(name, r#type)| Field {
+            |name, r#type, span| Field {
                 name,
                 r#type,
-                metadata: (),
+                metadata: IdentSpan { span },
             },
             |fields| {
                 Type::Struct(Struct {
@@ -176,10 +177,10 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
 
         let r#enum = composite(
             Keyword::Enum,
-            |(name, r#type)| Variant {
+            |name, r#type, span| Variant {
                 name,
                 r#type,
-                metadata: (),
+                metadata: IdentSpan { span },
             },
             |variants| {
                 Type::Enum(Enum {

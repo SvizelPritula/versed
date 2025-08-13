@@ -75,13 +75,22 @@ fn resolve_type<'filename>(
             fields,
             metadata: (),
         }) => {
+            check_unique(
+                fields
+                    .iter()
+                    .map(|Field { name, metadata, .. }| (name.as_str(), metadata.span)),
+                "field",
+                filename,
+                reports,
+            );
+
             let fields = fields
                 .into_iter()
                 .map(
                     |Field {
                          name,
                          r#type,
-                         metadata: (),
+                         metadata: _,
                      }| Field {
                         name,
                         r#type: resolve_type(r#type, names, filename, reports),
@@ -99,13 +108,22 @@ fn resolve_type<'filename>(
             variants,
             metadata: (),
         }) => {
+            check_unique(
+                variants
+                    .iter()
+                    .map(|Variant { name, metadata, .. }| (name.as_str(), metadata.span)),
+                "variant",
+                filename,
+                reports,
+            );
+
             let variants = variants
                 .into_iter()
                 .map(
                     |Variant {
                          name,
                          r#type,
-                         metadata: (),
+                         metadata: _,
                      }| Variant {
                         name,
                         r#type: resolve_type(r#type, names, filename, reports),
@@ -139,6 +157,31 @@ fn resolve_type<'filename>(
                 metadata: Resolution { index },
             })
         }
+    }
+}
+
+fn check_unique<'a, 'filename>(
+    iter: impl Iterator<Item = (&'a str, Span)>,
+    type_name: &'a str,
+    filename: &'filename str,
+    reports: &mut Reports<'filename>,
+) {
+    let mut names = HashMap::new();
+
+    for (name, span) in iter {
+        match names.entry(name) {
+            Entry::Occupied(entry) => reports.push(make_double_label_report(
+                format!("the {type_name} '{name}' was declared multiple times"),
+                format!("the {type_name} '{name}' was declared again here"),
+                span,
+                format!("the {type_name} '{name}' was first declared here"),
+                *entry.get(),
+                filename,
+            )),
+            Entry::Vacant(entry) => {
+                entry.insert(span);
+            }
+        };
     }
 }
 
