@@ -19,9 +19,6 @@ use crate::{
 };
 
 pub mod ast;
-pub mod c_sharp;
-pub mod codegen;
-pub mod r#macro;
 pub mod metadata;
 pub mod name_resolution;
 pub mod syntax;
