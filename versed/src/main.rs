@@ -19,6 +19,7 @@ use crate::{
 };
 
 pub mod ast;
+pub mod codegen;
 pub mod metadata;
 pub mod name_resolution;
 pub mod syntax;

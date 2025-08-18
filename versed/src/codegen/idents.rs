@@ -25,29 +25,38 @@ pub trait CaseBuilder {
     fn finish(self) -> String;
 }
 
-pub fn convert_case(ident: &str, case: impl CaseType, rules: impl IdentRules) -> String {
+pub fn convert_case<'a>(
+    parts: impl IntoIterator<Item = &'a str>,
+    case: impl CaseType,
+    rules: impl IdentRules,
+) -> String {
     let mut builder = case.builder();
-    let mut prev_lowercase = false;
 
-    for ch in ident.chars() {
-        if !rules.is_continue_char(ch) {
-            builder.add_word_end();
-            continue;
+    for part in parts {
+        let mut prev_lowercase = false;
+        let mut iter = part.chars().peekable();
+
+        while let Some(ch) = iter.next() {
+            let is_punct = !rules.is_continue_char(ch)
+                || GeneralCategoryGroup::Punctuation.contains(GeneralCategory::for_char(ch));
+
+            if is_punct {
+                builder.add_word_end();
+                continue;
+            }
+
+            let uppercase = Uppercase::for_char(ch);
+            let next_lowercase = iter.peek().copied().is_some_and(Lowercase::for_char);
+
+            if uppercase & (prev_lowercase | next_lowercase) {
+                builder.add_word_end();
+            }
+
+            builder.add_letter(ch);
+            prev_lowercase = Lowercase::for_char(ch);
         }
 
-        if GeneralCategoryGroup::Punctuation.contains(GeneralCategory::for_char(ch)) {
-            builder.add_word_end();
-            continue;
-        }
-
-        let uppercase = Uppercase::for_char(ch);
-        if uppercase & prev_lowercase {
-            builder.add_word_end();
-        }
-
-        builder.add_letter(ch);
-
-        prev_lowercase = Lowercase::for_char(ch);
+        builder.add_word_end();
     }
 
     let mut string = builder.finish();
@@ -90,22 +99,24 @@ pub fn disambiguate(ident: &mut String, mut taken: impl FnMut(&str) -> bool) {
 
 pub struct PascalCamelCaseBuilder {
     string: String,
-    word_start_pending: bool,
+    uppercase_pending: bool,
 }
 
 impl CaseBuilder for PascalCamelCaseBuilder {
     fn add_letter(&mut self, ch: char) {
-        if self.word_start_pending {
+        if self.uppercase_pending {
             self.string.extend(ch.to_uppercase());
         } else {
             self.string.extend(ch.to_lowercase());
         }
 
-        self.word_start_pending = false;
+        self.uppercase_pending = false;
     }
 
     fn add_word_end(&mut self) {
-        self.word_start_pending = true;
+        if !self.string.is_empty() {
+            self.uppercase_pending = true;
+        }
     }
 
     fn finish(self) -> String {
@@ -124,7 +135,7 @@ impl CaseType for CamelCase {
     fn builder(self) -> Self::Builder {
         PascalCamelCaseBuilder {
             string: String::new(),
-            word_start_pending: false,
+            uppercase_pending: false,
         }
     }
 }
@@ -135,7 +146,63 @@ impl CaseType for PascalCase {
     fn builder(self) -> Self::Builder {
         PascalCamelCaseBuilder {
             string: String::new(),
-            word_start_pending: true,
+            uppercase_pending: true,
+        }
+    }
+}
+
+pub struct SnakeKebabCaseBuilder {
+    string: String,
+    separator_pending: bool,
+    separator: char,
+}
+
+impl CaseBuilder for SnakeKebabCaseBuilder {
+    fn add_letter(&mut self, ch: char) {
+        if self.separator_pending {
+            self.string.push(self.separator);
+            self.separator_pending = false;
+        }
+
+        self.string.extend(ch.to_lowercase());
+    }
+
+    fn add_word_end(&mut self) {
+        if !self.string.is_empty() {
+            self.separator_pending = true;
+        }
+    }
+
+    fn finish(self) -> String {
+        self.string
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct SnakeCase;
+#[derive(Debug, Clone, Copy)]
+pub struct KebabCase;
+
+impl CaseType for SnakeCase {
+    type Builder = SnakeKebabCaseBuilder;
+
+    fn builder(self) -> Self::Builder {
+        SnakeKebabCaseBuilder {
+            string: String::new(),
+            separator: '_',
+            separator_pending: false,
+        }
+    }
+}
+
+impl CaseType for KebabCase {
+    type Builder = SnakeKebabCaseBuilder;
+
+    fn builder(self) -> Self::Builder {
+        SnakeKebabCaseBuilder {
+            string: String::new(),
+            separator: '-',
+            separator_pending: false,
         }
     }
 }
