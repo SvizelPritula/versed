@@ -8,7 +8,10 @@ use chumsky::{
 };
 
 use crate::{
-    ast::{Enum, Field, Identifier, NamedType, Primitive, Struct, Type, TypeSet, Variant},
+    ast::{
+        Enum, Field, Identifier, NamedType, Primitive, PrimitiveType, Struct, Type, TypeSet,
+        Variant,
+    },
     syntax::{
         ExtendVec, IdentSpan, Span, SpanMetadata,
         tokens::{Group, Keyword, Punct, Token},
@@ -75,6 +78,11 @@ fn single_or_group<'tokens, I: Input<'tokens>>() -> Parser![()] {
     })
 }
 
+const UNIT: Primitive<SpanMetadata> = Primitive {
+    r#type: PrimitiveType::Unit,
+    metadata: (),
+};
+
 pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
     let version = keyword(Keyword::Version)
         .ignore_then(
@@ -96,10 +104,16 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
             .delimited_by(left(Group::Paren), right(Group::Paren));
 
         let primitive = choice([
-            keyword(Keyword::Unit).to(Type::Primitive(Primitive::Unit)),
-            keyword(Keyword::Int).to(Type::Primitive(Primitive::Number)),
-            keyword(Keyword::String).to(Type::Primitive(Primitive::String)),
-        ]);
+            keyword(Keyword::Unit).to(PrimitiveType::Unit),
+            keyword(Keyword::Int).to(PrimitiveType::Number),
+            keyword(Keyword::String).to(PrimitiveType::String),
+        ])
+        .map(|r#type| {
+            Type::Primitive(Primitive {
+                r#type,
+                metadata: (),
+            })
+        });
 
         let identifier = ident().map_with(|ident, e| {
             Type::Identifier(Identifier {
@@ -123,9 +137,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
                 .then(
                     punct(Punct::Colon)
                         .ignore_then(r#type.clone())
-                        .or(punct(Punct::Colon)
-                            .not()
-                            .to(Type::Primitive(Primitive::Unit))),
+                        .or(punct(Punct::Colon).not().to(Type::Primitive(UNIT))),
                 )
                 .map(move |((ident, span), r#type)| map_field(ident, r#type, span));
 
@@ -200,7 +212,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
         .then(r#type.clone().recover_with(skip_until(
             any().ignored(),
             punct(Punct::Semicolon).rewind().ignored().or(end()),
-            || Type::Primitive(Primitive::Unit),
+            || Type::Primitive(UNIT),
         )))
         .then_ignore(
             punct(Punct::Semicolon)

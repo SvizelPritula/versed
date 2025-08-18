@@ -67,6 +67,8 @@ pub struct SpanMetadata;
 impl Metadata for SpanMetadata {
     type Struct = ();
     type Enum = ();
+    type List = ();
+    type Primitive = ();
     type Identifier = IdentSpan;
 
     type Name = IdentSpan;

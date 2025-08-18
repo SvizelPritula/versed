@@ -3,6 +3,8 @@ use std::fmt::Debug;
 pub trait Metadata: Clone {
     type Struct: Debug + Clone;
     type Enum: Debug + Clone;
+    type List: Debug + Clone;
+    type Primitive: Debug + Clone;
     type Identifier: Debug + Clone;
 
     type Name: Debug + Clone;
@@ -13,6 +15,8 @@ pub trait Metadata: Clone {
 impl Metadata for () {
     type Struct = ();
     type Enum = ();
+    type List = ();
+    type Primitive = ();
     type Identifier = ();
 
     type Name = ();

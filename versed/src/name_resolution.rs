@@ -7,7 +7,7 @@ use ariadne::{Color, Label, Report, ReportKind};
 
 use crate::{
     Reports,
-    ast::{Enum, Field, Identifier, NamedType, Struct, Type, TypeSet, Variant},
+    ast::{Enum, Field, Identifier, List, NamedType, Primitive, Struct, Type, TypeSet, Variant},
     metadata::Metadata,
     syntax::{Span, SpanMetadata},
 };
@@ -137,8 +137,20 @@ fn resolve_type<'filename>(
                 metadata: (),
             })
         }
-        Type::List(inner) => Type::List(Box::new(resolve_type(*inner, names, filename, reports))),
-        Type::Primitive(primitive) => Type::Primitive(primitive),
+        Type::List(List {
+            r#type,
+            metadata: (),
+        }) => Type::List(List {
+            r#type: Box::new(resolve_type(*r#type, names, filename, reports)),
+            metadata: (),
+        }),
+        Type::Primitive(Primitive {
+            r#type,
+            metadata: (),
+        }) => Type::Primitive(Primitive {
+            r#type,
+            metadata: (),
+        }),
         Type::Identifier(Identifier { ident, metadata }) => {
             let index = if let Some(&NameInfo { index, .. }) = names.get(&ident) {
                 index
@@ -195,6 +207,8 @@ pub struct ResolutionMetadata;
 impl Metadata for ResolutionMetadata {
     type Struct = ();
     type Enum = ();
+    type List = ();
+    type Primitive = ();
     type Identifier = Resolution;
     type Name = ();
     type Field = ();

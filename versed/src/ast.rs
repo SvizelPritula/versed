@@ -4,8 +4,8 @@ use crate::metadata::Metadata;
 pub enum Type<M: Metadata> {
     Struct(Struct<M>),
     Enum(Enum<M>),
-    List(Box<Type<M>>),
-    Primitive(Primitive),
+    List(List<M>),
+    Primitive(Primitive<M>),
     Identifier(Identifier<M>),
 }
 
@@ -35,8 +35,20 @@ pub struct Variant<M: Metadata> {
     pub metadata: M::Variant,
 }
 
+#[derive(Debug, Clone)]
+pub struct List<M: Metadata> {
+    pub r#type: Box<Type<M>>,
+    pub metadata: M::List,
+}
+
+#[derive(Debug, Clone)]
+pub struct Primitive<M: Metadata> {
+    pub r#type: PrimitiveType,
+    pub metadata: M::Primitive,
+}
+
 #[derive(Debug, Clone, Copy)]
-pub enum Primitive {
+pub enum PrimitiveType {
     String,
     Number,
     Unit,

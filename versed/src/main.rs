@@ -22,6 +22,7 @@ pub mod ast;
 pub mod codegen;
 pub mod metadata;
 pub mod name_resolution;
+pub mod rust;
 pub mod syntax;
 
 /// A tool for generating DTOs and their migrations from schema descriptions
@@ -43,6 +44,11 @@ enum Command {
     },
     /// Print the schema version from the header of a schema file
     Version {
+        /// The path to the schema file
+        file: PathBuf,
+    },
+    /// Generate rust type declarations
+    Rust {
         /// The path to the schema file
         file: PathBuf,
     },
@@ -71,6 +77,13 @@ fn main() -> ExitCode {
                 } else {
                     ExitCode::from(exit_codes::IO)
                 }
+            }
+            Err(code) => code,
+        },
+        Command::Rust { file } => match load_file(&file) {
+            Ok(types) => {
+                rust::generate_types(types);
+                ExitCode::SUCCESS
             }
             Err(code) => code,
         },
