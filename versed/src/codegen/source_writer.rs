@@ -91,4 +91,8 @@ impl<Writer: Write> SourceWriter<Writer> {
             self.blank_line = BlankLineState::Requested;
         }
     }
+
+    pub fn into_inner(self) -> Writer {
+        self.writer
+    }
 }

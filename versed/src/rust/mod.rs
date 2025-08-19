@@ -1,4 +1,4 @@
-use std::io::stdout;
+use std::{fs::File, io::Result, path::Path};
 
 use crate::{
     ast::TypeSet,
@@ -15,7 +15,7 @@ use crate::{
 mod idents;
 mod types;
 
-pub fn generate_types(types: TypeSet<ResolutionMetadata>) {
+pub fn generate_types(types: TypeSet<ResolutionMetadata>, output: &Path) -> Result<()> {
     let types = name(
         types,
         PascalCase,
@@ -25,10 +25,12 @@ pub fn generate_types(types: TypeSet<ResolutionMetadata>) {
         AddName,
     );
 
-    let output = stdout().lock();
-    let mut writer = SourceWriter::new(output);
+    let mut writer = SourceWriter::new(File::create(output)?);
 
-    emit_types(&mut writer, &types).unwrap();
+    emit_types(&mut writer, &types)?;
+
+    writer.into_inner().sync_all()?;
+    Ok(())
 }
 
 composite! {

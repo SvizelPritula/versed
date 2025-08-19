@@ -1,7 +1,7 @@
 use std::{
     fmt::Display,
     fs,
-    io::{BufWriter, Write},
+    io::{self, BufWriter, Write},
     ops::Range,
     path::{Path, PathBuf},
     process::ExitCode,
@@ -47,10 +47,21 @@ enum Command {
         /// The path to the schema file
         file: PathBuf,
     },
-    /// Generate rust type declarations
+    /// Commands related to Rust
     Rust {
+        #[command(subcommand)]
+        command: RustCommand,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum RustCommand {
+    /// Generate type declarations
+    Types {
         /// The path to the schema file
         file: PathBuf,
+        /// The path to the file in which to store the generated types
+        output: PathBuf,
     },
 }
 
@@ -69,22 +80,13 @@ fn main() -> ExitCode {
             Err(code) => code,
         },
         Command::Version { file } => match load_file(&file) {
-            Ok(TypeSet { version, .. }) => {
-                let result = writeln!(stdout().lock(), "{version}").inspect_err(print_error);
-
-                if result.is_ok() {
-                    ExitCode::SUCCESS
-                } else {
-                    ExitCode::from(exit_codes::IO)
-                }
-            }
+            Ok(TypeSet { version, .. }) => handle_io_result(writeln!(stdout().lock(), "{version}")),
             Err(code) => code,
         },
-        Command::Rust { file } => match load_file(&file) {
-            Ok(types) => {
-                rust::generate_types(types);
-                ExitCode::SUCCESS
-            }
+        Command::Rust {
+            command: RustCommand::Types { file, output },
+        } => match load_file(&file) {
+            Ok(types) => handle_io_result(rust::generate_types(types, &output)),
             Err(code) => code,
         },
     }
@@ -95,6 +97,16 @@ fn print_error<E: Display>(error: &E) {
 
     let mut stream = BufWriter::new(stderr().lock());
     let _ = writeln!(stream, "{STYLE}Error:{STYLE:#} {error}");
+}
+
+fn handle_io_result(result: io::Result<()>) -> ExitCode {
+    match result {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            print_error(&error);
+            ExitCode::from(exit_codes::IO)
+        }
+    }
 }
 
 type Reports<'filename> = Vec<Report<'static, (&'filename str, Range<usize>)>>;
