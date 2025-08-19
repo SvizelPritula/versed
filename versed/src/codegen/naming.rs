@@ -46,8 +46,8 @@ where
             map,
             used_types: HashSet::new(),
             type_name_stack: Vec::new(),
-            _phantom_a: PhantomData::default(),
-            _phantom_b: PhantomData::default(),
+            _phantom_a: PhantomData,
+            _phantom_b: PhantomData,
         }
     }
 
@@ -184,7 +184,7 @@ where
         }
     }
 
-    fn current_type_name<'a>(&mut self) -> String {
+    fn current_type_name(&mut self) -> String {
         let parts = self.type_name_stack.iter().map(String::as_str);
 
         let mut name = convert_case(parts, self.type_case, self.ident_rules);
