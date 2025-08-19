@@ -9,7 +9,7 @@ use chumsky::{
 
 use crate::{
     ast::{
-        Enum, Field, Identifier, NamedType, Primitive, PrimitiveType, Struct, Type, TypeSet,
+        Enum, Field, Identifier, List, NamedType, Primitive, PrimitiveType, Struct, Type, TypeSet,
         Variant,
     },
     syntax::{
@@ -124,7 +124,13 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
 
         let list = r#type
             .clone()
-            .delimited_by(left(Group::Bracket), right(Group::Bracket));
+            .delimited_by(left(Group::Bracket), right(Group::Bracket))
+            .map(|r#type| {
+                Type::List(List {
+                    r#type: Box::new(r#type),
+                    metadata: (),
+                })
+            });
 
         fn composite<'tokens, I: Input<'tokens>, F, T>(
             leading_keyword: Keyword,
