@@ -6,9 +6,11 @@ use crate::{
     metadata::{MapMetadata, Metadata},
 };
 
-struct NamingContext<A, B, Map, Case, Rules> {
-    case_type: Case,
+struct NamingContext<A, B, Map, Types, Fields, Variants, Rules> {
     ident_rules: Rules,
+    type_case: Types,
+    field_case: Fields,
+    variant_case: Variants,
     map: Map,
 
     used_types: HashSet<String>,
@@ -18,18 +20,29 @@ struct NamingContext<A, B, Map, Case, Rules> {
     _phantom_b: PhantomData<B>,
 }
 
-impl<A, B, Map, Case, Rules> NamingContext<A, B, Map, Case, Rules>
+impl<A, B, Map, Types, Fields, Variants, Rules>
+    NamingContext<A, B, Map, Types, Fields, Variants, Rules>
 where
     A: Metadata,
     B: Metadata,
     Map: MapMetadata<A, NameMetadata, B>,
-    Case: CaseType + Copy,
+    Types: CaseType + Copy,
+    Fields: CaseType + Copy,
+    Variants: CaseType + Copy,
     Rules: IdentRules + Copy,
 {
-    fn new(case_type: Case, ident_rules: Rules, map: Map) -> Self {
+    fn new(
+        type_case: Types,
+        field_case: Fields,
+        variant_case: Variants,
+        ident_rules: Rules,
+        map: Map,
+    ) -> Self {
         NamingContext {
-            case_type,
             ident_rules,
+            type_case,
+            field_case,
+            variant_case,
             map,
             used_types: HashSet::new(),
             type_name_stack: Vec::new(),
@@ -82,6 +95,7 @@ where
     fn name_struct(&mut self, Struct { fields, metadata }: Struct<A>) -> Struct<B> {
         let name = self.current_type_name();
         let mut new_fields = Vec::with_capacity(fields.len());
+        let mut used_names = HashSet::new();
 
         for Field {
             name,
@@ -91,10 +105,15 @@ where
         {
             let (r#type, name) = self.push_and_name_type(r#type, name);
 
+            let mut converted_name =
+                convert_case([name.as_str()], self.field_case, self.ident_rules);
+            disambiguate(&mut converted_name, |name| used_names.contains(name));
+            used_names.insert(converted_name.clone());
+
             new_fields.push(Field {
                 name,
                 r#type,
-                metadata: self.map.map_field(metadata, ()),
+                metadata: self.map.map_field(metadata, converted_name),
             });
         }
 
@@ -107,6 +126,7 @@ where
     fn name_enum(&mut self, Enum { variants, metadata }: Enum<A>) -> Enum<B> {
         let name = self.current_type_name();
         let mut new_variants = Vec::with_capacity(variants.len());
+        let mut used_names = HashSet::new();
 
         for Variant {
             name,
@@ -116,10 +136,15 @@ where
         {
             let (r#type, name) = self.push_and_name_type(r#type, name);
 
+            let mut converted_name =
+                convert_case([name.as_str()], self.variant_case, self.ident_rules);
+            disambiguate(&mut converted_name, |name| used_names.contains(name));
+            used_names.insert(converted_name.clone());
+
             new_variants.push(Variant {
                 name,
                 r#type,
-                metadata: self.map.map_variant(metadata, ()),
+                metadata: self.map.map_variant(metadata, converted_name),
             });
         }
 
@@ -159,13 +184,13 @@ where
         }
     }
 
-    fn current_type_name(&self) -> String {
-        self.type_name(self.type_name_stack.iter().map(String::as_str))
-    }
+    fn current_type_name<'a>(&mut self) -> String {
+        let parts = self.type_name_stack.iter().map(String::as_str);
 
-    fn type_name<'a>(&self, parts: impl IntoIterator<Item = &'a str>) -> String {
-        let mut name = convert_case(parts, self.case_type, self.ident_rules);
+        let mut name = convert_case(parts, self.type_case, self.ident_rules);
         disambiguate(&mut name, |name| self.used_types.contains(name));
+
+        self.used_types.insert(name.clone());
         name
     }
 }
@@ -181,13 +206,15 @@ impl Metadata for NameMetadata {
     type Identifier = String;
 
     type Name = ();
-    type Field = ();
-    type Variant = ();
+    type Field = String;
+    type Variant = String;
 }
 
-pub fn name<A, B, Map, Case, Rules>(
+pub fn name<A, B, Map, Types, Fields, Variants, Rules>(
     types: TypeSet<A>,
-    case_type: Case,
+    type_case: Types,
+    field_case: Fields,
+    variant_case: Variants,
     ident_rules: Rules,
     map: Map,
 ) -> TypeSet<B>
@@ -195,8 +222,10 @@ where
     A: Metadata,
     B: Metadata,
     Map: MapMetadata<A, NameMetadata, B>,
-    Case: CaseType + Copy,
+    Types: CaseType + Copy,
+    Fields: CaseType + Copy,
+    Variants: CaseType + Copy,
     Rules: IdentRules + Copy,
 {
-    NamingContext::new(case_type, ident_rules, map).name_types(types)
+    NamingContext::new(type_case, field_case, variant_case, ident_rules, map).name_types(types)
 }

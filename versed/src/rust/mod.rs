@@ -1,7 +1,7 @@
 use crate::{
     ast::TypeSet,
     codegen::{
-        idents::PascalCase,
+        idents::{PascalCase, SnakeCase},
         naming::{NameMetadata, name},
     },
     composite, mapper,
@@ -12,7 +12,14 @@ use crate::{
 mod idents;
 
 pub fn generate_types(types: TypeSet<ResolutionMetadata>) {
-    let types = name(types, PascalCase, RustIdentRules, AddName);
+    let types = name(
+        types,
+        PascalCase,
+        SnakeCase,
+        PascalCase,
+        RustIdentRules,
+        AddName,
+    );
 
     println!("{types:#?}");
 }
