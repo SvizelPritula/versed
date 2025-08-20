@@ -1,4 +1,4 @@
-use std::{fs::File, io::Result, path::Path};
+use std::{fs::File, io::{Result, Write}, path::Path};
 
 use crate::{
     ast::TypeSet,
@@ -34,7 +34,7 @@ pub fn generate_types(types: TypeSet<ResolutionMetadata>, output: &Path) -> Resu
 
     emit_types(&mut writer, &types)?;
 
-    writer.into_inner().sync_all()?;
+    writer.into_inner().flush()?;
     Ok(())
 }
 

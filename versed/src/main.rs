@@ -80,7 +80,10 @@ fn main() -> ExitCode {
             Err(code) => code,
         },
         Command::Version { file } => match load_file(&file) {
-            Ok(TypeSet { version, .. }) => handle_io_result(writeln!(stdout().lock(), "{version}")),
+            Ok(TypeSet { version, .. }) => handle_io_result({
+                let mut file = stdout().lock();
+                writeln!(file, "{version}").and_then(|()| file.flush())
+            }),
             Err(code) => code,
         },
         Command::Rust {
