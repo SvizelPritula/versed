@@ -10,7 +10,7 @@ use std::{
 use anstream::{stderr, stdout};
 use anstyle::{AnsiColor, Color, Style};
 use ariadne::{Report, Source};
-use clap::{Parser, Subcommand};
+use clap::{ArgAction, Parser, Subcommand};
 
 use crate::{
     ast::TypeSet,
@@ -60,8 +60,11 @@ enum RustCommand {
     Types {
         /// The path to the schema file
         file: PathBuf,
-        /// The path to the file in which to store the generated types
+        /// The path to the directory in which to create a file with the generated types
         output: PathBuf,
+        /// Interpret <OUTPUT> as a file instead of as a directory
+        #[arg(short = 'f', long, action=ArgAction::SetTrue)]
+        to_file: bool,
     },
 }
 
@@ -87,9 +90,14 @@ fn main() -> ExitCode {
             Err(code) => code,
         },
         Command::Rust {
-            command: RustCommand::Types { file, output },
+            command:
+                RustCommand::Types {
+                    file,
+                    output,
+                    to_file,
+                },
         } => match load_file(&file) {
-            Ok(types) => handle_io_result(rust::generate_types(types, &output)),
+            Ok(types) => handle_io_result(rust::generate_types(types, &output, to_file)),
             Err(code) => code,
         },
     }

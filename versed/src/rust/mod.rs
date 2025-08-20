@@ -1,4 +1,8 @@
-use std::{fs::File, io::{Result, Write}, path::Path};
+use std::{
+    fs::File,
+    io::{Result, Write},
+    path::Path,
+};
 
 use crate::{
     ast::TypeSet,
@@ -18,7 +22,11 @@ use crate::{
 mod idents;
 mod types;
 
-pub fn generate_types(types: TypeSet<ResolutionMetadata>, output: &Path) -> Result<()> {
+pub fn generate_types(
+    types: TypeSet<ResolutionMetadata>,
+    output: &Path,
+    to_file: bool,
+) -> Result<()> {
     let types = name(
         types,
         PascalCase,
@@ -30,7 +38,15 @@ pub fn generate_types(types: TypeSet<ResolutionMetadata>, output: &Path) -> Resu
         AddName,
     );
 
-    let mut writer = SourceWriter::new(File::create(output)?);
+    let type_path = if !to_file {
+        Some(output.join(format!("{}.rs", types.metadata.name)))
+    } else {
+        None
+    };
+
+    let type_path = type_path.as_deref().unwrap_or(output);
+
+    let mut writer = SourceWriter::new(File::create(type_path)?);
 
     emit_types(&mut writer, &types)?;
 
