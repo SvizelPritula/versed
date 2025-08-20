@@ -247,5 +247,5 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
 
     version
         .then(types)
-        .map(|(version, types)| TypeSet { version, types })
+        .map(|(version, types)| TypeSet { version, types, metadata: () })
 }

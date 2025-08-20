@@ -9,7 +9,10 @@ use crate::{
     },
     composite, mapper,
     name_resolution::ResolutionMetadata,
-    rust::{idents::RustIdentRules, types::emit_types},
+    rust::{
+        idents::{RustIdentRules, RustModIdentRules},
+        types::emit_types,
+    },
 };
 
 mod idents;
@@ -21,7 +24,9 @@ pub fn generate_types(types: TypeSet<ResolutionMetadata>, output: &Path) -> Resu
         PascalCase,
         SnakeCase,
         PascalCase,
+        SnakeCase,
         RustIdentRules,
+        RustModIdentRules,
         AddName,
     );
 

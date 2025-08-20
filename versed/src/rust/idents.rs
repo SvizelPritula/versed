@@ -35,3 +35,28 @@ impl IdentRules for RustIdentRules {
         "r#"
     }
 }
+
+#[derive(Debug, Default, Clone, Copy)]
+pub struct RustModIdentRules;
+
+impl IdentRules for RustModIdentRules {
+    fn is_start_char(&self, ch: char) -> bool {
+        ch.is_ascii() && RustIdentRules.is_start_char(ch)
+    }
+
+    fn is_continue_char(&self, ch: char) -> bool {
+        ch.is_ascii() && RustIdentRules.is_continue_char(ch)
+    }
+
+    fn is_reserved(&self, str: &str) -> bool {
+        RustIdentRules.is_reserved(str)
+    }
+
+    fn is_always_reserved(&self, str: &str) -> bool {
+        RustIdentRules.is_always_reserved(str)
+    }
+
+    fn reserved_prefix(&self) -> &str {
+        RustIdentRules.reserved_prefix()
+    }
+}

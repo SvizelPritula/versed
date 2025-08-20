@@ -7,7 +7,8 @@ pub trait Metadata: Clone {
     type Primitive: Debug + Clone;
     type Identifier: Debug + Clone;
 
-    type Name: Debug + Clone;
+    type TypeSet: Debug + Clone;
+    type Named: Debug + Clone;
     type Field: Debug + Clone;
     type Variant: Debug + Clone;
 }
@@ -19,7 +20,8 @@ impl Metadata for () {
     type Primitive = ();
     type Identifier = ();
 
-    type Name = ();
+    type TypeSet = ();
+    type Named = ();
     type Field = ();
     type Variant = ();
 }
@@ -31,7 +33,8 @@ pub trait MapMetadata<A: Metadata, B: Metadata, R: Metadata> {
     fn map_primitive(&self, left: A::Primitive, right: B::Primitive) -> R::Primitive;
     fn map_identifier(&self, left: A::Identifier, right: B::Identifier) -> R::Identifier;
 
-    fn map_name(&self, left: A::Name, right: B::Name) -> R::Name;
+    fn map_type_set(&self, left: A::TypeSet, right: B::TypeSet) -> R::TypeSet;
+    fn map_named(&self, left: A::Named, right: B::Named) -> R::Named;
     fn map_field(&self, left: A::Field, right: B::Field) -> R::Field;
     fn map_variant(&self, left: A::Variant, right: B::Variant) -> R::Variant;
 }
@@ -43,7 +46,8 @@ pub trait GetMetadata<A: Metadata, R: Metadata> {
     fn get_primitive<'a>(&self, metadata: &'a A::Primitive) -> &'a R::Primitive;
     fn get_identifier<'a>(&self, metadata: &'a A::Identifier) -> &'a R::Identifier;
 
-    fn get_name<'a>(&self, metadata: &'a A::Name) -> &'a R::Name;
+    fn get_type_set<'a>(&self, metadata: &'a A::TypeSet) -> &'a R::TypeSet;
+    fn get_named<'a>(&self, metadata: &'a A::Named) -> &'a R::Named;
     fn get_field<'a>(&self, metadata: &'a A::Field) -> &'a R::Field;
     fn get_variant<'a>(&self, metadata: &'a A::Variant) -> &'a R::Variant;
 }
@@ -66,7 +70,8 @@ macro_rules! mapper {
             mapper_func!(map_primitive, Primitive, $crate::metadata::Metadata);
             mapper_func!(map_identifier, Identifier, $crate::metadata::Metadata);
 
-            mapper_func!(map_name, Name, $crate::metadata::Metadata);
+            mapper_func!(map_type_set, TypeSet, $crate::metadata::Metadata);
+            mapper_func!(map_named, Named, $crate::metadata::Metadata);
             mapper_func!(map_field, Field, $crate::metadata::Metadata);
             mapper_func!(map_variant, Variant, $crate::metadata::Metadata);
         }
@@ -91,7 +96,8 @@ macro_rules! getter {
             getter_func!(get_primitive, Primitive, $crate::metadata::Metadata);
             getter_func!(get_identifier, Identifier, $crate::metadata::Metadata);
 
-            getter_func!(get_name, Name, $crate::metadata::Metadata);
+            getter_func!(get_type_set, TypeSet, $crate::metadata::Metadata);
+            getter_func!(get_named, Named, $crate::metadata::Metadata);
             getter_func!(get_field, Field, $crate::metadata::Metadata);
             getter_func!(get_variant, Variant, $crate::metadata::Metadata);
         }
@@ -115,7 +121,9 @@ macro_rules! composite {
             type List = $element<$(<$type as $crate::metadata::Metadata>::List),*>;
             type Primitive = $element<$(<$type as $crate::metadata::Metadata>::Primitive),*>;
             type Identifier = $element<$(<$type as $crate::metadata::Metadata>::Identifier),*>;
-            type Name = $element<$(<$type as $crate::metadata::Metadata>::Name),*>;
+
+            type TypeSet = $element<$(<$type as $crate::metadata::Metadata>::TypeSet),*>;
+            type Named = $element<$(<$type as $crate::metadata::Metadata>::Named),*>;
             type Field = $element<$(<$type as $crate::metadata::Metadata>::Field),*>;
             type Variant = $element<$(<$type as $crate::metadata::Metadata>::Variant),*>;
         }

@@ -19,7 +19,11 @@ struct NameInfo {
 }
 
 pub fn resolve_and_check(
-    TypeSet { version, types }: TypeSet<SpanMetadata>,
+    TypeSet {
+        version,
+        types,
+        metadata: (),
+    }: TypeSet<SpanMetadata>,
     filename: &'_ str,
 ) -> (TypeSet<ResolutionMetadata>, Reports<'_>) {
     let mut names: HashMap<String, NameInfo> = HashMap::new();
@@ -61,7 +65,14 @@ pub fn resolve_and_check(
         )
         .collect();
 
-    (TypeSet { version, types }, reports)
+    (
+        TypeSet {
+            version,
+            types,
+            metadata: (),
+        },
+        reports,
+    )
 }
 
 fn resolve_type<'filename>(
@@ -210,7 +221,9 @@ impl Metadata for ResolutionMetadata {
     type List = ();
     type Primitive = ();
     type Identifier = Resolution;
-    type Name = ();
+
+    type TypeSet = ();
+    type Named = ();
     type Field = ();
     type Variant = ();
 }

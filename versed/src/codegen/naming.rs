@@ -6,11 +6,16 @@ use crate::{
     metadata::{MapMetadata, Metadata},
 };
 
-struct NamingContext<A, B, Map, Types, Fields, Variants, Rules> {
+struct NamingContext<A, B, Map, Types, Fields, Variants, Version, Rules, VersionRules> {
     ident_rules: Rules,
+
     type_case: Types,
     field_case: Fields,
     variant_case: Variants,
+
+    version_case: Version,
+    version_ident_rules: VersionRules,
+
     map: Map,
 
     used_types: HashSet<String>,
@@ -20,8 +25,8 @@ struct NamingContext<A, B, Map, Types, Fields, Variants, Rules> {
     _phantom_b: PhantomData<B>,
 }
 
-impl<A, B, Map, Types, Fields, Variants, Rules>
-    NamingContext<A, B, Map, Types, Fields, Variants, Rules>
+impl<A, B, Map, Types, Fields, Variants, Version, Rules, VersionRules>
+    NamingContext<A, B, Map, Types, Fields, Variants, Version, Rules, VersionRules>
 where
     A: Metadata,
     B: Metadata,
@@ -29,13 +34,17 @@ where
     Types: CaseType + Copy,
     Fields: CaseType + Copy,
     Variants: CaseType + Copy,
+    Version: CaseType + Copy,
     Rules: IdentRules + Copy,
+    VersionRules: IdentRules + Copy,
 {
     fn new(
         type_case: Types,
         field_case: Fields,
         variant_case: Variants,
+        version_case: Version,
         ident_rules: Rules,
+        version_ident_rules: VersionRules,
         map: Map,
     ) -> Self {
         NamingContext {
@@ -43,6 +52,8 @@ where
             type_case,
             field_case,
             variant_case,
+            version_case,
+            version_ident_rules,
             map,
             used_types: HashSet::new(),
             type_name_stack: Vec::new(),
@@ -51,7 +62,14 @@ where
         }
     }
 
-    fn name_types(&mut self, TypeSet { version, types }: TypeSet<A>) -> TypeSet<B> {
+    fn name_types(
+        &mut self,
+        TypeSet {
+            version,
+            types,
+            metadata,
+        }: TypeSet<A>,
+    ) -> TypeSet<B> {
         let mut new_types = Vec::with_capacity(types.len());
 
         for NamedType {
@@ -65,13 +83,20 @@ where
             new_types.push(NamedType {
                 name,
                 r#type,
-                metadata: self.map.map_name(metadata, ()),
+                metadata: self.map.map_named(metadata, ()),
             });
         }
+
+        let version_name = convert_case(
+            [version.as_str()],
+            self.version_case,
+            self.version_ident_rules,
+        );
 
         TypeSet {
             version,
             types: new_types,
+            metadata: self.map.map_type_set(metadata, version_name),
         }
     }
 
@@ -205,17 +230,20 @@ impl Metadata for NameMetadata {
     type Primitive = String;
     type Identifier = String;
 
-    type Name = ();
+    type TypeSet = String;
+    type Named = ();
     type Field = String;
     type Variant = String;
 }
 
-pub fn name<A, B, Map, Types, Fields, Variants, Rules>(
+pub fn name<A, B, Map, Types, Fields, Variants, Version, Rules, VersionRules>(
     types: TypeSet<A>,
     type_case: Types,
     field_case: Fields,
     variant_case: Variants,
+    version_case: Version,
     ident_rules: Rules,
+    version_ident_rules: VersionRules,
     map: Map,
 ) -> TypeSet<B>
 where
@@ -225,7 +253,18 @@ where
     Types: CaseType + Copy,
     Fields: CaseType + Copy,
     Variants: CaseType + Copy,
+    Version: CaseType + Copy,
     Rules: IdentRules + Copy,
+    VersionRules: IdentRules + Copy,
 {
-    NamingContext::new(type_case, field_case, variant_case, ident_rules, map).name_types(types)
+    NamingContext::new(
+        type_case,
+        field_case,
+        variant_case,
+        version_case,
+        ident_rules,
+        version_ident_rules,
+        map,
+    )
+    .name_types(types)
 }

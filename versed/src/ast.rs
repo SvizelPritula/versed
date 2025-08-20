@@ -64,11 +64,12 @@ pub struct Identifier<M: Metadata> {
 pub struct TypeSet<M: Metadata> {
     pub version: String,
     pub types: Vec<NamedType<M>>,
+    pub metadata: M::TypeSet,
 }
 
 #[derive(Debug, Clone)]
 pub struct NamedType<M: Metadata> {
     pub name: String,
     pub r#type: Type<M>,
-    pub metadata: M::Name,
+    pub metadata: M::Named,
 }

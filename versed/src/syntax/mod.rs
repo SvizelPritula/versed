@@ -71,7 +71,8 @@ impl Metadata for SpanMetadata {
     type Primitive = ();
     type Identifier = IdentSpan;
 
-    type Name = IdentSpan;
+    type TypeSet = ();
+    type Named = IdentSpan;
     type Field = IdentSpan;
     type Variant = IdentSpan;
 }
