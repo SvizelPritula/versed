@@ -181,6 +181,25 @@ fn keyword_idents() {
 }
 
 #[test]
+fn rust_type_idents() {
+    translate_and_check(
+        "version v1;
+
+String = unit;
+
+\"\" = struct {
+    vec: struct {}
+};
+
+Struct = struct {
+    a: string,
+    b: [int],
+};
+",
+    );
+}
+
+#[test]
 fn recursive_with_list() {
     translate_and_check(
         "version v1;
