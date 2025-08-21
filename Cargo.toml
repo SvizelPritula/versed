@@ -15,3 +15,6 @@ chumsky = "0.10.1"
 clap = { version = "4.5.43", features = ["derive"] }
 icu_properties = "2.0.1"
 thiserror = "2.0.12"
+
+[dev-dependencies]
+tempfile = "3.21.0"

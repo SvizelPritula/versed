@@ -1,0 +1,228 @@
+use std::{env, fs, process::Command};
+
+use tempfile::tempdir;
+
+const MOD_CONTENT: &str = concat!(
+    "#[allow(unused_imports)]\n",
+    "use v1 as _;\n",
+    "fn main() {}\n"
+);
+
+fn translate_and_check(schema: &str) {
+    let dir = tempdir().unwrap();
+
+    let mod_path = dir.path().join("mod.rs");
+    fs::write(&mod_path, MOD_CONTENT).unwrap();
+
+    let schema_path = dir.path().join("schema.vd");
+    fs::write(&schema_path, schema).unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_versed"))
+        .arg("rust")
+        .arg("types")
+        .arg(schema_path)
+        .arg(dir.path())
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "Error running versed:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let output = Command::new("rustc")
+        .arg(mod_path)
+        .arg("--out-dir")
+        .arg(dir.path())
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "Error running rustc:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
+fn empty() {
+    translate_and_check(
+        "version v1;
+",
+    );
+}
+
+#[test]
+fn r#struct() {
+    translate_and_check(
+        "version v1;
+
+Point = struct {
+    x: int,
+    y: int
+};
+",
+    );
+}
+
+#[test]
+fn r#enum() {
+    translate_and_check(
+        "version v1;
+
+Color = enum {
+    red: int,
+    green: string,
+    blue: unit
+};
+",
+    );
+}
+
+#[test]
+fn nested_structs_enums() {
+    let mut schema = String::from(
+        "version v1;
+
+Type = ",
+    );
+
+    for _ in 0..50 {
+        schema.push_str("struct { a: enum { a: ");
+    }
+
+    schema.push_str("int");
+
+    for _ in 0..50 {
+        schema.push_str(" } }");
+    }
+
+    schema.push_str(";");
+
+    translate_and_check(&schema)
+}
+
+#[test]
+fn references() {
+    translate_and_check(
+        "version v1;
+
+User = struct {
+    name: Name,
+    gender: Gender,
+};
+
+Name = struct { first: string, second: string };
+Gender = enum { male, female, other: string };
+",
+    );
+}
+
+#[test]
+fn type_alias() {
+    translate_and_check(
+        "version v1;
+
+Name = string;
+",
+    );
+}
+
+#[test]
+fn nested_arrays() {
+    translate_and_check(
+        "version v1;
+
+Array = [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[int]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]];
+",
+    );
+}
+
+#[test]
+fn bad_chars_in_name() {
+    translate_and_check(
+        "version v1;
+
+\"\" = struct {
+    \"\\\"\": int,
+    \"\\n\": int,
+    \".\": int,
+    \"name-name\": int,
+};
+",
+    );
+}
+
+#[test]
+fn bad_start_char() {
+    translate_and_check(
+        "version v1;
+
+\"10\" = struct {
+    \"1\": int,
+    \"2\": int,
+};
+",
+    );
+}
+
+#[test]
+fn keyword_idents() {
+    translate_and_check(
+        "version v1;
+
+\"struct\" = struct {
+    box: int,
+    self: int,
+};
+",
+    );
+}
+
+#[test]
+fn recursive_with_list() {
+    translate_and_check(
+        "version v1;
+
+User = struct {
+    subordinates: [User]
+};
+",
+    );
+}
+
+#[test]
+fn recursive_with_enum() {
+    translate_and_check(
+        "version v1;
+
+User = struct {
+    admin: enum { some: User, none }
+};
+",
+    );
+}
+
+#[test]
+fn mutually_recursive() {
+    translate_and_check(
+        "version v1;
+
+A = struct { b: B };
+B = struct { c: C };
+C = struct { d: D };
+D = struct { a: A };
+",
+    );
+}
+
+// #[test]
+// fn recursive_alias() {
+//     translate_and_check(
+//         "version v1;
+//
+// A = [A];
+// ",
+//     );
+// }
