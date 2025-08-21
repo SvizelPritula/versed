@@ -1,7 +1,7 @@
 use std::io::{Result, Write};
 
 use crate::{
-    ast::{Enum, PrimitiveType, Struct, Type, TypeSet},
+    ast::{Enum, NamedType, PrimitiveType, Struct, Type, TypeSet},
     codegen::source_writer::SourceWriter,
     rust::RustMetadata,
 };
@@ -12,7 +12,7 @@ pub fn emit_types(
 ) -> Result<()> {
     for r#type in &types.types {
         if needs_type_alias(&r#type.r#type) {
-            emit_type_alias(writer, types, &r#type.r#type)?;
+            emit_type_alias(writer, types, &r#type)?;
         }
     }
     writer.blank_line();
@@ -65,7 +65,7 @@ fn emit_struct(
     for field in &r#struct.fields {
         writer.write(&field.metadata.name)?;
         writer.write(": ")?;
-        write_type_name(writer, types, &field.r#type)?;
+        write_type_name(writer, types, &field.r#type, field.metadata.r#box)?;
         writer.write_nl(",")?;
     }
 
@@ -89,7 +89,7 @@ fn emit_enum(
     for variant in &r#enum.variants {
         writer.write(&variant.metadata.name)?;
         writer.write("(")?;
-        write_type_name(writer, types, &variant.r#type)?;
+        write_type_name(writer, types, &variant.r#type, variant.metadata.r#box)?;
         writer.write_nl("),")?;
     }
 
@@ -103,12 +103,12 @@ fn emit_enum(
 fn emit_type_alias(
     writer: &mut SourceWriter<impl Write>,
     types: &TypeSet<RustMetadata>,
-    r#type: &Type<RustMetadata>,
+    r#type: &NamedType<RustMetadata>,
 ) -> Result<()> {
     writer.write("type ")?;
-    writer.write(type_name(r#type))?;
+    writer.write(type_name(&r#type.r#type))?;
     writer.write(" = ")?;
-    write_type_name(writer, types, r#type)?;
+    write_type_name(writer, types, &r#type.r#type, r#type.metadata.r#box)?;
     writer.write_nl(";")?;
 
     Ok(())
@@ -118,13 +118,18 @@ fn write_type_name(
     writer: &mut SourceWriter<impl Write>,
     types: &TypeSet<RustMetadata>,
     r#type: &Type<RustMetadata>,
+    r#box: bool,
 ) -> Result<()> {
+    if r#box {
+        writer.write("::std::boxed::Box<")?;
+    }
+
     match r#type {
         Type::Struct(r#struct) => writer.write(&r#struct.metadata.name)?,
         Type::Enum(r#enum) => writer.write(&r#enum.metadata.name)?,
         Type::List(list) => {
             writer.write("::std::vec::Vec<")?;
-            write_type_name(writer, types, &list.r#type)?;
+            write_type_name(writer, types, &list.r#type, false)?;
             writer.write(">")?;
         }
         Type::Primitive(primitive) => {
@@ -137,6 +142,10 @@ fn write_type_name(
         Type::Identifier(identifier) => writer.write(type_name(
             &types.types[identifier.metadata.resolution.index].r#type,
         ))?,
+    }
+
+    if r#box {
+        writer.write(">")?;
     }
 
     Ok(())

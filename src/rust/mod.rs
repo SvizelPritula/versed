@@ -8,18 +8,20 @@ use crate::{
     ast::TypeSet,
     codegen::{
         idents::{PascalCase, SnakeCase},
-        naming::{NameMetadata, name},
+        naming::{name, NameMetadata},
         source_writer::SourceWriter,
     },
     composite, mapper,
     name_resolution::ResolutionMetadata,
     rust::{
         idents::{RustIdentRules, RustModIdentRules},
+        recursive::{mark_boxes, BoxMetadata},
         types::emit_types,
     },
 };
 
 mod idents;
+mod recursive;
 mod types;
 
 pub fn generate_types(
@@ -27,7 +29,7 @@ pub fn generate_types(
     output: &Path,
     to_file: bool,
 ) -> Result<()> {
-    let types = name(
+    let mut types = name(
         types,
         PascalCase,
         SnakeCase,
@@ -37,6 +39,7 @@ pub fn generate_types(
         RustModIdentRules,
         AddName,
     );
+    mark_boxes(&mut types);
 
     if to_file {
         write_to_file(&types, output, false)
@@ -107,12 +110,17 @@ fn add_mod_to_file(mod_name: &str, path: &Path) -> Result<()> {
 composite! {
     struct (RustInfo, RustMetadata) {
         name: NameMetadata | N,
-        resolution: ResolutionMetadata | R
+        resolution: ResolutionMetadata | R,
+        r#box: BoxMetadata | B
     }
 }
 
 mapper! {
     fn AddName(resolution: ResolutionMetadata, name: NameMetadata) -> RustMetadata {
-        RustInfo { name, resolution }
+        RustInfo {
+            name,
+            resolution,
+            r#box: Default::default() // Either false or ()
+        }
     }
 }
