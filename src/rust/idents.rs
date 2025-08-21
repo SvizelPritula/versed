@@ -1,6 +1,9 @@
 use icu_properties::props::{BinaryProperty, XidContinue, XidStart};
 
-use crate::codegen::idents::IdentRules;
+use crate::codegen::{
+    idents::{CaseType, IdentRules, PascalCase, SnakeCase},
+    naming_pass::NamingRules,
+};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct RustIdentRules;
@@ -58,5 +61,28 @@ impl IdentRules for RustModIdentRules {
 
     fn reserved_prefix(&self) -> &str {
         RustIdentRules.reserved_prefix()
+    }
+}
+
+pub struct RustNamingRules;
+
+impl NamingRules for RustNamingRules {
+    fn ident_rules(&self) -> impl IdentRules {
+        RustIdentRules
+    }
+    fn type_case(&self) -> impl CaseType {
+        PascalCase
+    }
+    fn field_case(&self) -> impl CaseType {
+        SnakeCase
+    }
+    fn variant_case(&self) -> impl CaseType {
+        PascalCase
+    }
+    fn version_case(&self) -> impl CaseType {
+        SnakeCase
+    }
+    fn version_ident_rules(&self) -> impl IdentRules {
+        RustModIdentRules
     }
 }

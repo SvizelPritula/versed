@@ -6,16 +6,17 @@ use crate::{
     metadata::{MapMetadata, Metadata},
 };
 
-struct NamingContext<A, B, Map, Types, Fields, Variants, Version, Rules, VersionRules> {
-    ident_rules: Rules,
+pub trait NamingRules {
+    fn ident_rules(&self) -> impl IdentRules;
+    fn type_case(&self) -> impl CaseType;
+    fn field_case(&self) -> impl CaseType;
+    fn variant_case(&self) -> impl CaseType;
+    fn version_case(&self) -> impl CaseType;
+    fn version_ident_rules(&self) -> impl IdentRules;
+}
 
-    type_case: Types,
-    field_case: Fields,
-    variant_case: Variants,
-
-    version_case: Version,
-    version_ident_rules: VersionRules,
-
+struct NamingContext<A, B, Map, Rules> {
+    rules: Rules,
     map: Map,
 
     used_types: HashSet<String>,
@@ -25,38 +26,21 @@ struct NamingContext<A, B, Map, Types, Fields, Variants, Version, Rules, Version
     _phantom_b: PhantomData<B>,
 }
 
-impl<A, B, Map, Types, Fields, Variants, Version, Rules, VersionRules>
-    NamingContext<A, B, Map, Types, Fields, Variants, Version, Rules, VersionRules>
+impl<A, B, Map, Rules> NamingContext<A, B, Map, Rules>
 where
     A: Metadata,
     B: Metadata,
     Map: MapMetadata<A, NameMetadata, B>,
-    Types: CaseType + Copy,
-    Fields: CaseType + Copy,
-    Variants: CaseType + Copy,
-    Version: CaseType + Copy,
-    Rules: IdentRules + Copy,
-    VersionRules: IdentRules + Copy,
+    Rules: NamingRules,
 {
-    fn new(
-        type_case: Types,
-        field_case: Fields,
-        variant_case: Variants,
-        version_case: Version,
-        ident_rules: Rules,
-        version_ident_rules: VersionRules,
-        map: Map,
-    ) -> Self {
+    fn new(rules: Rules, map: Map) -> Self {
         NamingContext {
-            ident_rules,
-            type_case,
-            field_case,
-            variant_case,
-            version_case,
-            version_ident_rules,
+            rules,
             map,
+
             used_types: HashSet::new(),
             type_name_stack: Vec::new(),
+
             _phantom_a: PhantomData,
             _phantom_b: PhantomData,
         }
@@ -89,8 +73,8 @@ where
 
         let version_name = convert_case(
             [version.as_str()],
-            self.version_case,
-            self.version_ident_rules,
+            self.rules.version_case(),
+            self.rules.version_ident_rules(),
         );
 
         TypeSet {
@@ -130,8 +114,11 @@ where
         {
             let (r#type, name) = self.push_and_name_type(r#type, name);
 
-            let mut converted_name =
-                convert_case([name.as_str()], self.field_case, self.ident_rules);
+            let mut converted_name = convert_case(
+                [name.as_str()],
+                self.rules.field_case(),
+                self.rules.ident_rules(),
+            );
             disambiguate(&mut converted_name, |name| used_names.contains(name));
             used_names.insert(converted_name.clone());
 
@@ -161,8 +148,11 @@ where
         {
             let (r#type, name) = self.push_and_name_type(r#type, name);
 
-            let mut converted_name =
-                convert_case([name.as_str()], self.variant_case, self.ident_rules);
+            let mut converted_name = convert_case(
+                [name.as_str()],
+                self.rules.variant_case(),
+                self.rules.ident_rules(),
+            );
             disambiguate(&mut converted_name, |name| used_names.contains(name));
             used_names.insert(converted_name.clone());
 
@@ -212,7 +202,7 @@ where
     fn current_type_name(&mut self) -> String {
         let parts = self.type_name_stack.iter().map(String::as_str);
 
-        let mut name = convert_case(parts, self.type_case, self.ident_rules);
+        let mut name = convert_case(parts, self.rules.type_case(), self.rules.ident_rules());
         disambiguate(&mut name, |name| self.used_types.contains(name));
 
         self.used_types.insert(name.clone());
@@ -236,35 +226,12 @@ impl Metadata for NameMetadata {
     type Variant = String;
 }
 
-pub fn name<A, B, Map, Types, Fields, Variants, Version, Rules, VersionRules>(
-    types: TypeSet<A>,
-    type_case: Types,
-    field_case: Fields,
-    variant_case: Variants,
-    version_case: Version,
-    ident_rules: Rules,
-    version_ident_rules: VersionRules,
-    map: Map,
-) -> TypeSet<B>
+pub fn name<A, B, Map, Rules>(types: TypeSet<A>, rules: Rules, map: Map) -> TypeSet<B>
 where
     A: Metadata,
     B: Metadata,
     Map: MapMetadata<A, NameMetadata, B>,
-    Types: CaseType + Copy,
-    Fields: CaseType + Copy,
-    Variants: CaseType + Copy,
-    Version: CaseType + Copy,
-    Rules: IdentRules + Copy,
-    VersionRules: IdentRules + Copy,
+    Rules: NamingRules,
 {
-    NamingContext::new(
-        type_case,
-        field_case,
-        variant_case,
-        version_case,
-        ident_rules,
-        version_ident_rules,
-        map,
-    )
-    .name_types(types)
+    NamingContext::new(rules, map).name_types(types)
 }

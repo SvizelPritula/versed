@@ -7,15 +7,14 @@ use std::{
 use crate::{
     ast::TypeSet,
     codegen::{
-        idents::{PascalCase, SnakeCase},
-        naming::{name, NameMetadata},
+        naming_pass::{NameMetadata, name},
         source_writer::SourceWriter,
     },
     composite, mapper,
     name_resolution::ResolutionMetadata,
     rust::{
-        idents::{RustIdentRules, RustModIdentRules},
-        recursive::{mark_boxes, BoxMetadata},
+        idents::RustNamingRules,
+        recursive::{BoxMetadata, mark_boxes},
         types::emit_types,
     },
 };
@@ -29,16 +28,7 @@ pub fn generate_types(
     output: &Path,
     to_file: bool,
 ) -> Result<()> {
-    let mut types = name(
-        types,
-        PascalCase,
-        SnakeCase,
-        PascalCase,
-        SnakeCase,
-        RustIdentRules,
-        RustModIdentRules,
-        AddName,
-    );
+    let mut types = name(types, RustNamingRules, AddName);
     mark_boxes(&mut types);
 
     if to_file {

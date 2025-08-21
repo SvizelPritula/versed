@@ -12,7 +12,7 @@ pub fn emit_types(
 ) -> Result<()> {
     for r#type in &types.types {
         if needs_type_alias(&r#type.r#type) {
-            emit_type_alias(writer, types, &r#type)?;
+            emit_type_alias(writer, types, r#type)?;
         }
     }
     writer.blank_line();
