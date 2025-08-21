@@ -245,7 +245,9 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
         .collect()
         .map(|ExtendVec(inner)| inner);
 
-    version
-        .then(types)
-        .map(|(version, types)| TypeSet { version, types, metadata: () })
+    version.then(types).map(|(version, types)| TypeSet {
+        version,
+        types,
+        metadata: (),
+    })
 }

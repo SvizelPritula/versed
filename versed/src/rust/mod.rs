@@ -1,6 +1,6 @@
 use std::{
-    fs::File,
-    io::{Result, Write},
+    fs::{File, OpenOptions, create_dir_all},
+    io::{Read, Result, Seek, SeekFrom, Write},
     path::Path,
 };
 
@@ -38,19 +38,69 @@ pub fn generate_types(
         AddName,
     );
 
-    let type_path = if !to_file {
-        Some(output.join(format!("{}.rs", types.metadata.name)))
+    if to_file {
+        write_to_file(&types, output, false)
     } else {
-        None
+        write_to_directory(&types, output)
+    }
+}
+
+fn write_to_directory(types: &TypeSet<RustMetadata>, path: &Path) -> Result<()> {
+    create_dir_all(path)?;
+    let mod_name = &types.metadata.name;
+
+    let type_path = path.join(format!("{}.rs", mod_name));
+    write_to_file(types, &type_path, true)?;
+
+    let mod_path = path.join("mod.rs");
+    add_mod_to_file(mod_name, &mod_path)?;
+
+    Ok(())
+}
+
+fn write_to_file(types: &TypeSet<RustMetadata>, path: &Path, must_be_new: bool) -> Result<()> {
+    let file = if must_be_new {
+        File::create_new(path)?
+    } else {
+        File::create(path)?
     };
 
-    let type_path = type_path.as_deref().unwrap_or(output);
-
-    let mut writer = SourceWriter::new(File::create(type_path)?);
-
-    emit_types(&mut writer, &types)?;
-
+    let mut writer = SourceWriter::new(file);
+    emit_types(&mut writer, types)?;
     writer.into_inner().flush()?;
+
+    Ok(())
+}
+
+fn add_mod_to_file(mod_name: &str, path: &Path) -> Result<()> {
+    let mut file = OpenOptions::new()
+        .write(true)
+        .read(true)
+        .create(true)
+        .truncate(false)
+        .open(path)?;
+
+    let pos = file.seek(SeekFrom::End(0))?;
+
+    let must_add_lf = if pos > 0 {
+        file.seek_relative(-1)?;
+
+        let mut byte_buf = [0];
+        file.read_exact(&mut byte_buf)?;
+        let [byte] = byte_buf;
+
+        byte != b'\n'
+    } else {
+        false
+    };
+
+    if must_add_lf {
+        file.write_all(b"\n")?;
+    }
+
+    writeln!(file, "mod {mod_name};")?;
+    file.flush()?;
+
     Ok(())
 }
 
