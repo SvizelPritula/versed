@@ -6,6 +6,8 @@ use crate::{
     rust::RustMetadata,
 };
 
+const DERIVE: &str = "#[derive(Debug, Clone)]";
+
 pub fn emit_types(
     writer: &mut SourceWriter<impl Write>,
     types: &TypeSet<RustMetadata>,
@@ -57,12 +59,14 @@ fn emit_struct(
     types: &TypeSet<RustMetadata>,
     r#struct: &Struct<RustMetadata>,
 ) -> Result<()> {
-    writer.write("struct ")?;
+    writer.write_nl(DERIVE)?;
+    writer.write("pub struct ")?;
     writer.write(&r#struct.metadata.name)?;
     writer.write_nl(" {")?;
     writer.indent();
 
     for field in &r#struct.fields {
+        writer.write("pub ")?;
         writer.write(&field.metadata.name)?;
         writer.write(": ")?;
         write_type_name(writer, types, &field.r#type, field.metadata.r#box)?;
@@ -81,7 +85,8 @@ fn emit_enum(
     types: &TypeSet<RustMetadata>,
     r#enum: &Enum<RustMetadata>,
 ) -> Result<()> {
-    writer.write("enum ")?;
+    writer.write_nl(DERIVE)?;
+    writer.write("pub enum ")?;
     writer.write(&r#enum.metadata.name)?;
     writer.write_nl(" {")?;
     writer.indent();
@@ -105,7 +110,7 @@ fn emit_type_alias(
     types: &TypeSet<RustMetadata>,
     r#type: &NamedType<RustMetadata>,
 ) -> Result<()> {
-    writer.write("type ")?;
+    writer.write("pub type ")?;
     writer.write(type_name(&r#type.r#type))?;
     writer.write(" = ")?;
     write_type_name(writer, types, &r#type.r#type, r#type.metadata.r#box)?;
