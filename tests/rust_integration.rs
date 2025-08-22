@@ -46,6 +46,46 @@ fn translate_and_check(schema: &str) {
 }
 
 #[test]
+fn readme() {
+    const CONTENTS: &str = include_str!("../README.md");
+
+    let mut in_code_block = false;
+    let mut body = String::new();
+    let mut is_other_language = false;
+    let mut contains_version = false;
+
+    for line in CONTENTS.lines() {
+        if line.starts_with("```") {
+            if !in_code_block {
+                in_code_block = true;
+                body = String::new();
+                is_other_language = line.len() > 3;
+                contains_version = false;
+            } else {
+                if !is_other_language {
+                    if !contains_version {
+                        body.insert_str(0, "version v1;\n");
+                    }
+
+                    translate_and_check(&body);
+                }
+
+                in_code_block = false;
+            }
+        } else {
+            if in_code_block {
+                body.push_str(line);
+                body.push('\n');
+
+                if line.starts_with("version ") {
+                    contains_version = true;
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn empty() {
     translate_and_check(
         "version v1;

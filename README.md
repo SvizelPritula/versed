@@ -104,8 +104,8 @@ There are currently three primitive types:
 Any type can be surrounded by square brackets to turn in into a list:
 
 ```
-type Vector = [int];
-type Matrix = [[int]];
+Vector = [int];
+Matrix = [[int]];
 ```
 
 Lists are translated to Rust `Vec`s.
@@ -166,7 +166,7 @@ Color = enum {
 You can also refer directly to named types using their name:
 
 ```
-User = {
+User = struct {
     name: Name,
     email: Email,
     friends: [Friend],
