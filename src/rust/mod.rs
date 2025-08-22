@@ -1,6 +1,6 @@
 use std::{
     fs::{File, OpenOptions, create_dir_all},
-    io::{Read, Result, Seek, SeekFrom, Write},
+    io::{BufWriter, Read, Result, Seek, SeekFrom, Write},
     path::Path,
 };
 
@@ -64,7 +64,7 @@ fn write_to_file(types: &TypeSet<RustMetadata>, path: &Path, must_be_new: bool) 
         File::create(path)?
     };
 
-    let mut writer = SourceWriter::new(file);
+    let mut writer = SourceWriter::new(BufWriter::new(file));
     emit_types(&mut writer, types)?;
     writer.into_inner().flush()?;
 
@@ -92,6 +92,8 @@ fn add_mod_to_file(mod_name: &str, path: &Path) -> Result<()> {
     } else {
         false
     };
+
+    let mut file = BufWriter::new(file);
 
     if must_add_lf {
         file.write_all(b"\n")?;
