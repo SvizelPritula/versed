@@ -14,7 +14,7 @@ use crate::{
     name_resolution::ResolutionMetadata,
     rust::{
         idents::RustNamingRules,
-        recursive::{BoxMetadata, mark_boxes},
+        recursive::{BoxMetadata, NewtypeMetadata, mark_boxes, mark_newtypes},
         types::emit_types,
     },
 };
@@ -23,13 +23,19 @@ mod idents;
 mod recursive;
 mod types;
 
+fn convert_types(types: TypeSet<ResolutionMetadata>) -> TypeSet<RustMetadata> {
+    let mut types = name(types, RustNamingRules, AddName);
+    mark_boxes(&mut types);
+    mark_newtypes(&mut types);
+    types
+}
+
 pub fn generate_types(
     types: TypeSet<ResolutionMetadata>,
     output: &Path,
     to_file: bool,
 ) -> Result<()> {
-    let mut types = name(types, RustNamingRules, AddName);
-    mark_boxes(&mut types);
+    let types = convert_types(types);
 
     if to_file {
         write_to_file(&types, output, false)
@@ -101,7 +107,8 @@ composite! {
     struct (RustInfo, RustMetadata) {
         name: NameMetadata | N,
         resolution: ResolutionMetadata | R,
-        r#box: BoxMetadata | B
+        r#box: BoxMetadata | B,
+        newtype: NewtypeMetadata | NT
     }
 }
 
@@ -110,7 +117,9 @@ mapper! {
         RustInfo {
             name,
             resolution,
-            r#box: Default::default() // Either false or ()
+            // Either false or ():
+            r#box: Default::default(),
+            newtype: Default::default(),
         }
     }
 }

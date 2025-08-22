@@ -6,13 +6,13 @@ use crate::{
     rust::RustMetadata,
 };
 
-struct Context {
+struct BoxContext {
     queue: VecDeque<usize>,
     visited: HashSet<usize>,
     source: usize,
 }
 
-impl Context {
+impl BoxContext {
     fn enqueue(&mut self, idx: usize) {
         if self.visited.insert(idx) {
             self.queue.push_front(idx);
@@ -22,7 +22,7 @@ impl Context {
 
 pub fn mark_boxes(types: &mut TypeSet<RustMetadata>) {
     for source in 0..types.types.len() {
-        let mut context = Context {
+        let mut context = BoxContext {
             queue: VecDeque::new(),
             visited: HashSet::new(),
             source,
@@ -39,7 +39,7 @@ pub fn mark_boxes(types: &mut TypeSet<RustMetadata>) {
     }
 }
 
-fn process_type(r#type: &mut Type<RustMetadata>, context: &mut Context) -> bool {
+fn process_type(r#type: &mut Type<RustMetadata>, context: &mut BoxContext) -> bool {
     match r#type {
         Type::Struct(r#struct) => {
             for field in &mut r#struct.fields {
@@ -74,6 +74,53 @@ fn process_type(r#type: &mut Type<RustMetadata>, context: &mut Context) -> bool 
     }
 }
 
+struct NewtypeContext<'a> {
+    types: &'a TypeSet<RustMetadata>,
+    visited: HashSet<usize>,
+    source: usize,
+}
+
+pub fn mark_newtypes(types: &mut TypeSet<RustMetadata>) {
+    for source in 0..types.types.len() {
+        let mut context = NewtypeContext {
+            types: &types,
+            visited: [source].into_iter().collect(),
+            source,
+        };
+        context.visited.insert(source);
+
+        let result = has_type_reference_through_alias(&types.types[source].r#type, &mut context);
+        types.types[source].metadata.newtype = result;
+    }
+}
+
+fn has_type_reference_through_alias(
+    r#type: &Type<RustMetadata>,
+    context: &mut NewtypeContext,
+) -> bool {
+    match r#type {
+        Type::Struct(_struct) => false,
+        Type::Enum(_enum) => false,
+        Type::List(list) => has_type_reference_through_alias(&list.r#type, context),
+        Type::Primitive(_primitive) => false,
+        Type::Identifier(identifier) => {
+            let index = identifier.metadata.resolution.index;
+
+            if index == context.source {
+                true
+            } else {
+                let r#type = &context.types.types[index];
+
+                if !r#type.metadata.newtype && context.visited.insert(index) {
+                    has_type_reference_through_alias(&r#type.r#type, context)
+                } else {
+                    false
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct BoxMetadata;
 
@@ -88,4 +135,20 @@ impl Metadata for BoxMetadata {
     type Named = bool;
     type Field = bool;
     type Variant = bool;
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct NewtypeMetadata;
+
+impl Metadata for NewtypeMetadata {
+    type Struct = ();
+    type Enum = ();
+    type List = ();
+    type Primitive = ();
+    type Identifier = ();
+
+    type TypeSet = ();
+    type Named = bool;
+    type Field = ();
+    type Variant = ();
 }

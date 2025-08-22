@@ -276,12 +276,13 @@ D = struct { a: A };
     );
 }
 
-// #[test]
-// fn recursive_alias() {
-//     translate_and_check(
-//         "version v1;
-//
-// A = [A];
-// ",
-//     );
-// }
+#[test]
+fn recursive_alias() {
+    translate_and_check(
+        "version v1;
+
+A = [A];
+B = struct { a: A };
+",
+    );
+}

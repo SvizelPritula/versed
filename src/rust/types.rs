@@ -141,11 +141,20 @@ fn emit_type_alias(
     context: Context,
     r#type: &NamedType<RustMetadata>,
 ) -> Result<()> {
-    writer.write("pub type ")?;
-    writer.write(type_name(&r#type.r#type))?;
-    writer.write(" = ")?;
-    write_type_name(writer, context, &r#type.r#type, r#type.metadata.r#box)?;
-    writer.write_nl(";")?;
+    if r#type.metadata.newtype {
+        writer.write_nl(DERIVE)?;
+        writer.write("pub struct ")?;
+        writer.write(type_name(&r#type.r#type))?;
+        writer.write("(pub ")?;
+        write_type_name(writer, context, &r#type.r#type, r#type.metadata.r#box)?;
+        writer.write_nl(");")?;
+    } else {
+        writer.write("pub type ")?;
+        writer.write(type_name(&r#type.r#type))?;
+        writer.write(" = ")?;
+        write_type_name(writer, context, &r#type.r#type, r#type.metadata.r#box)?;
+        writer.write_nl(";")?;
+    }
 
     Ok(())
 }
