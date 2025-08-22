@@ -2,8 +2,8 @@ version v1;
 
 User = struct {
     name: string,
-    age: enum { age: int, unknown },
-    contact: [Contact],
+    age: enum { known: int, unknown },
+    contacts: [Contact],
 };
 
 Contact = enum {
