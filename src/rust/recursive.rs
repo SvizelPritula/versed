@@ -83,7 +83,7 @@ struct NewtypeContext<'a> {
 pub fn mark_newtypes(types: &mut TypeSet<RustMetadata>) {
     for source in 0..types.types.len() {
         let mut context = NewtypeContext {
-            types: &types,
+            types,
             visited: [source].into_iter().collect(),
             source,
         };
