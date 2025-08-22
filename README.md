@@ -1,7 +1,8 @@
 # Versed
 
-Versed is a tool for generating DTO type definitions in Rust (and soon TypeScript) based on
-a schema description in a simple custom language based on algebraic data types.
+[Versed](https://crates.io/crates/versed) is a tool for generating DTO type definitions
+in Rust (and soon TypeScript) based on a schema description
+in a simple custom language based on algebraic data types.
 
 ## Example
 
@@ -61,6 +62,8 @@ pub struct ContactAddress {
 }
 ```
 
+`versed` automatically converts identifiers into Pascal case or snake case as appropriate.
+
 ## Schema files
 
 Schema files consist of a version header and any number of named types.
@@ -101,7 +104,7 @@ There are currently three primitive types:
 
 ### Lists
 
-Any type can be surrounded by square brackets to turn in into a list:
+Any type can be surrounded by square brackets to turn it into a list:
 
 ```
 Vector = [int];
