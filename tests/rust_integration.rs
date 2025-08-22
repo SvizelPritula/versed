@@ -181,6 +181,46 @@ fn keyword_idents() {
 }
 
 #[test]
+fn similar_names() {
+    translate_and_check(
+        "version v1;
+
+a = struct {
+    a_b: int,
+    A_b: int,
+    a_B: int,
+    A_B: int,
+};
+
+A = enum {
+    a_b: int,
+    A_b: int,
+    a_B: int,
+    A_B: int,
+};
+",
+    );
+}
+
+#[test]
+fn types_named_like_path() {
+    translate_and_check(
+        "version v1;
+
+User = struct {
+    contact: struct {
+        email: string
+    }
+};
+
+UserContact = struct {
+    email: int
+};
+",
+    );
+}
+
+#[test]
 fn rust_type_idents() {
     translate_and_check(
         "version v1;
