@@ -53,7 +53,7 @@ enum Command {
         #[command(subcommand)]
         command: RustCommand,
     },
-    /// Commands related to Rust
+    /// Commands related to TypeScript
     #[command(name = "typescript")]
     TypeScript {
         #[command(subcommand)]
