@@ -6,13 +6,30 @@ use crate::{
     metadata::{MapMetadata, Metadata},
 };
 
+pub trait NamingRule {
+    fn name<'a, P, F>(&self, parts: P, taken: F) -> String
+    where
+        P: IntoIterator<Item = &'a str>,
+        F: for<'b> FnMut(&'b str) -> bool;
+}
+
+impl<C: CaseType + Copy, I: IdentRules + Copy> NamingRule for (C, I) {
+    fn name<'a, P, F>(&self, parts: P, taken: F) -> String
+    where
+        P: IntoIterator<Item = &'a str>,
+        F: for<'b> FnMut(&'b str) -> bool,
+    {
+        let mut name = convert_case(parts, self.0, self.1);
+        disambiguate(&mut name, taken);
+        name
+    }
+}
+
 pub trait NamingRules {
-    fn ident_rules(&self) -> impl IdentRules;
-    fn type_case(&self) -> impl CaseType;
-    fn field_case(&self) -> impl CaseType;
-    fn variant_case(&self) -> impl CaseType;
-    fn version_case(&self) -> impl CaseType;
-    fn version_ident_rules(&self) -> impl IdentRules;
+    fn r#type(&self) -> impl NamingRule;
+    fn field(&self) -> impl NamingRule;
+    fn variant(&self) -> impl NamingRule;
+    fn version(&self) -> impl NamingRule;
 }
 
 struct NamingContext<A, B, Map, Rules> {
@@ -71,11 +88,7 @@ where
             });
         }
 
-        let version_name = convert_case(
-            [version.as_str()],
-            self.rules.version_case(),
-            self.rules.version_ident_rules(),
-        );
+        let version_name = self.rules.version().name([version.as_str()], |_| false);
 
         TypeSet {
             version,
@@ -114,12 +127,10 @@ where
         {
             let (r#type, name) = self.push_and_name_type(r#type, name);
 
-            let mut converted_name = convert_case(
-                [name.as_str()],
-                self.rules.field_case(),
-                self.rules.ident_rules(),
-            );
-            disambiguate(&mut converted_name, |name| used_names.contains(name));
+            let converted_name = self
+                .rules
+                .field()
+                .name([name.as_str()], |name| used_names.contains(name));
             used_names.insert(converted_name.clone());
 
             new_fields.push(Field {
@@ -148,12 +159,10 @@ where
         {
             let (r#type, name) = self.push_and_name_type(r#type, name);
 
-            let mut converted_name = convert_case(
-                [name.as_str()],
-                self.rules.variant_case(),
-                self.rules.ident_rules(),
-            );
-            disambiguate(&mut converted_name, |name| used_names.contains(name));
+            let converted_name = self
+                .rules
+                .variant()
+                .name([name.as_str()], |name| used_names.contains(name));
             used_names.insert(converted_name.clone());
 
             new_variants.push(Variant {
@@ -202,8 +211,10 @@ where
     fn current_type_name(&mut self) -> String {
         let parts = self.type_name_stack.iter().map(String::as_str);
 
-        let mut name = convert_case(parts, self.rules.type_case(), self.rules.ident_rules());
-        disambiguate(&mut name, |name| self.used_types.contains(name));
+        let name = self
+            .rules
+            .r#type()
+            .name(parts, |name| self.used_types.contains(name));
 
         self.used_types.insert(name.clone());
         name
