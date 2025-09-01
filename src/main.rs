@@ -24,6 +24,7 @@ pub mod metadata;
 pub mod name_resolution;
 pub mod rust;
 pub mod syntax;
+pub mod typescript;
 
 /// A tool for generating DTOs from schema descriptions
 #[derive(Parser, Debug)]

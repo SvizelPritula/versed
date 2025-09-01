@@ -21,12 +21,13 @@ impl IdentRules for RustIdentRules {
     fn is_reserved(&self, str: &str) -> bool {
         matches!(
             str,
-            "as" | "break" | "const" | "continue" | "crate" | "else" | "enum" | "extern"
+            | "as" | "break" | "const" | "continue" | "crate" | "else" | "enum" | "extern"
             | "false" | "fn" | "for" | "if" | "impl" | "in" | "let" | "loop" | "match" | "mod"
             | "move" | "mut" | "pub" | "ref" | "return" | "self" | "Self" | "static" | "struct"
             | "super" | "trait" | "true" | "type" | "unsafe" | "use" | "where" | "while" | "async"
             | "await" | "dyn" | "abstract" | "become" | "box" | "do" | "final" | "macro"
             | "override" | "priv" | "typeof" | "unsized" | "virtual" | "yield" | "try" | "gen"
+            | "_"
         )
     }
 
