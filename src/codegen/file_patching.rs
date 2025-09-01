@@ -34,7 +34,7 @@ pub fn add_line_to_file(path: &Path, content: fmt::Arguments) -> Result<()> {
     }
 
     file.write_fmt(content)?;
-    file.write("\n".as_bytes())?;
+    file.write_all("\n".as_bytes())?;
     file.flush()?;
 
     Ok(())
