@@ -63,8 +63,7 @@ impl IdentRules for TypeScriptMemberIdentRules {
         false
     }
 
-    #[rustfmt::skip]
-    fn is_always_reserved(&self, str: &str) -> bool {
+    fn is_always_reserved(&self, _str: &str) -> bool {
         false
     }
 
@@ -86,6 +85,6 @@ impl NamingRules for TypeScriptNamingRules {
         (KebabCase, TypeScriptMemberIdentRules)
     }
     fn version(&self) -> impl NamingRule {
-        (CamelCase, TypeScriptMemberIdentRules)
+        (CamelCase, TypeScriptTypeIdentRules)
     }
 }

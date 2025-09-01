@@ -53,10 +53,30 @@ enum Command {
         #[command(subcommand)]
         command: RustCommand,
     },
+    /// Commands related to Rust
+    #[command(name = "typescript")]
+    TypeScript {
+        #[command(subcommand)]
+        command: TypeScriptCommand,
+    },
 }
 
 #[derive(Subcommand, Debug)]
 enum RustCommand {
+    /// Generate type declarations
+    Types {
+        /// The path to the schema file
+        file: PathBuf,
+        /// The path to the directory in which to create a file with the generated types
+        output: PathBuf,
+        /// Interpret <OUTPUT> as a file instead of as a directory
+        #[arg(short = 'f', long, action=ArgAction::SetTrue)]
+        to_file: bool,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum TypeScriptCommand {
     /// Generate type declarations
     Types {
         /// The path to the schema file
@@ -99,6 +119,17 @@ fn main() -> ExitCode {
                 },
         } => match load_file(&file) {
             Ok(types) => handle_io_result(rust::generate_types(types, &output, to_file)),
+            Err(code) => code,
+        },
+        Command::TypeScript {
+            command:
+                TypeScriptCommand::Types {
+                    file,
+                    output,
+                    to_file,
+                },
+        } => match load_file(&file) {
+            Ok(types) => handle_io_result(typescript::generate_types(types, &output, to_file)),
             Err(code) => code,
         },
     }

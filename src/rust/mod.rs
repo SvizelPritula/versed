@@ -1,12 +1,13 @@
 use std::{
-    fs::{File, OpenOptions, create_dir_all},
-    io::{BufWriter, Read, Result, Seek, SeekFrom, Write},
+    fs::{File, create_dir_all},
+    io::{BufWriter, Result, Write},
     path::Path,
 };
 
 use crate::{
     ast::TypeSet,
     codegen::{
+        file_patching::add_line_to_file,
         naming_pass::{NameMetadata, name},
         source_writer::SourceWriter,
     },
@@ -72,37 +73,7 @@ fn write_to_file(types: &TypeSet<RustMetadata>, path: &Path, must_be_new: bool) 
 }
 
 fn add_mod_to_file(mod_name: &str, path: &Path) -> Result<()> {
-    let mut file = OpenOptions::new()
-        .write(true)
-        .read(true)
-        .create(true)
-        .truncate(false)
-        .open(path)?;
-
-    let pos = file.seek(SeekFrom::End(0))?;
-
-    let must_add_lf = if pos > 0 {
-        file.seek_relative(-1)?;
-
-        let mut byte_buf = [0];
-        file.read_exact(&mut byte_buf)?;
-        let [byte] = byte_buf;
-
-        byte != b'\n'
-    } else {
-        false
-    };
-
-    let mut file = BufWriter::new(file);
-
-    if must_add_lf {
-        file.write_all(b"\n")?;
-    }
-
-    writeln!(file, "mod {mod_name};")?;
-    file.flush()?;
-
-    Ok(())
+    add_line_to_file(path, format_args!("mod {mod_name};"))
 }
 
 composite! {
