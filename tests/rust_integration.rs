@@ -326,3 +326,13 @@ B = struct { a: A };
 ",
     );
 }
+
+#[test]
+fn self_alias() {
+    translate_and_check(
+        "version v1;
+
+A = A;
+",
+    );
+}
