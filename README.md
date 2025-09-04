@@ -1,7 +1,7 @@
 # Versed
 
 [Versed](https://crates.io/crates/versed) is a tool for generating DTO type definitions
-in Rust (and soon TypeScript) based on a schema description
+in Rust and TypeScript based on a schema description
 in a simple custom language based on algebraic data types.
 
 ## Example
@@ -62,7 +62,44 @@ pub struct ContactAddress {
 }
 ```
 
-`versed` automatically converts identifiers into Pascal case or snake case as appropriate.
+You can also run `versed typescript types schema.vs src/schema/`
+to generate TypeScript type declarations:
+
+```ts
+export type User = {
+    name: string,
+    age: (
+        {
+            type: "known",
+            value: number,
+        } | {
+            type: "unknown",
+            value: null,
+        }
+    ),
+    contacts: Contact[],
+};
+
+export type Contact = (
+    {
+        type: "phone",
+        value: number,
+    } | {
+        type: "email",
+        value: string,
+    } | {
+        type: "address",
+        value: {
+            street: string,
+            city: string,
+            country: string,
+        },
+    }
+);
+```
+
+`versed` automatically converts identifiers based on the naming convention of the target language,
+i.e. PascalCase/snake_case for Rust and PascalCase/camelCase/kebab-case for TypeScript.
 
 ## Schema files
 
@@ -96,11 +133,11 @@ There are five types of types to choose from.
 
 There are currently three primitive types:
 
-| Name     | Contents                                                                         | Equivalent Rust type |
-| -------- | -------------------------------------------------------------------------------- | -------------------- |
-| `int`    | a 64-bit signed integer                                                          | `i64`                |
-| `string` | a sequence of Unicode code points                                                | `String`             |
-| `unit`   | the [unit type](https://en.wikipedia.org/wiki/Unit_type) with one possible value | `()`                 |
+| Name     | Contents                                                                         | Equivalent Rust type | Equivalent TypeScript type |
+| -------- | -------------------------------------------------------------------------------- | -------------------- | -------------------------- |
+| `int`    | a 64-bit signed integer                                                          | `i64`                | `number`                   |
+| `string` | a sequence of Unicode code points                                                | `String`             | `string`                   |
+| `unit`   | the [unit type](https://en.wikipedia.org/wiki/Unit_type) with one possible value | `()`                 | `null`                     |
 
 ### Lists
 
@@ -111,7 +148,7 @@ Vector = [int];
 Matrix = [[int]];
 ```
 
-Lists are translated to Rust `Vec`s.
+In Rust, lists are translated to `Vec`s.
 
 ### Structs
 
