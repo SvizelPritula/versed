@@ -187,7 +187,7 @@ fn write_type_name(
             })?;
         }
         Type::Identifier(identifier) => writer.write(type_name(
-            &context.types.types[identifier.metadata.resolution.index].r#type,
+            &context.types.types[identifier.metadata.resolution].r#type,
         ))?,
     }
 

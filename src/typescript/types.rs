@@ -91,7 +91,7 @@ fn emit_type(
             writer.write(keyword)?;
         }
         Type::Identifier(identifier) => {
-            let r#type = &types.types[identifier.metadata.resolution.index].r#type;
+            let r#type = &types.types[identifier.metadata.resolution].r#type;
             writer.write(type_name(r#type))?;
         }
     }

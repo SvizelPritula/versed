@@ -12,7 +12,7 @@ use crate::{
         source_writer::SourceWriter,
     },
     composite, mapper,
-    name_resolution::ResolutionMetadata,
+    preprocessing::{BasicMetadata, ResolutionMetadata},
     rust::{
         idents::RustNamingRules,
         recursive::{BoxMetadata, NewtypeMetadata, mark_boxes, mark_newtypes},
@@ -24,18 +24,14 @@ mod idents;
 mod recursive;
 mod types;
 
-fn convert_types(types: TypeSet<ResolutionMetadata>) -> TypeSet<RustMetadata> {
+fn convert_types(types: TypeSet<BasicMetadata>) -> TypeSet<RustMetadata> {
     let mut types = name(types, RustNamingRules, AddName);
     mark_boxes(&mut types);
     mark_newtypes(&mut types);
     types
 }
 
-pub fn generate_types(
-    types: TypeSet<ResolutionMetadata>,
-    output: &Path,
-    to_file: bool,
-) -> Result<()> {
+pub fn generate_types(types: TypeSet<BasicMetadata>, output: &Path, to_file: bool) -> Result<()> {
     let types = convert_types(types);
 
     if to_file {
@@ -86,10 +82,10 @@ composite! {
 }
 
 mapper! {
-    fn AddName(resolution: ResolutionMetadata, name: NameMetadata) -> RustMetadata {
+    fn AddName(basic: BasicMetadata, name: NameMetadata) -> RustMetadata {
         RustInfo {
             name,
-            resolution,
+            resolution: basic.resolution,
             // Either false or ():
             r#box: Default::default(),
             newtype: Default::default(),

@@ -4,9 +4,9 @@ use ariadne::{Color, Label, Report, ReportKind};
 use chumsky::{Parser, container::Container, error::Rich, input::Input, span::SimpleSpan};
 
 use crate::{
-    Reports,
     ast::TypeSet,
     metadata::Metadata,
+    reports::Reports,
     syntax::{lexer::lexer, parser::parser},
 };
 
@@ -19,12 +19,11 @@ pub type Spanned<T> = (T, Span);
 
 pub fn parse<'filename>(
     src: &str,
+    reports: &mut Reports<'filename>,
     filename: &'filename str,
-) -> (Option<TypeSet<SpanMetadata>>, Reports<'filename>) {
-    let mut reports = Vec::new();
-
+) -> Option<TypeSet<SpanMetadata>> {
     let (tokens, errors) = lexer().parse(src).into_output_errors();
-    reports.extend(errors.into_iter().map(|error| make_report(error, filename)));
+    reports.extend_fatal(errors.into_iter().map(|error| make_report(error, filename)));
 
     let result = if let Some(tokens) = tokens {
         let tokens = tokens
@@ -32,14 +31,14 @@ pub fn parse<'filename>(
             .map((src.len()..src.len()).into(), |(t, s)| (t, s));
 
         let (ast, errors) = parser().parse(tokens).into_output_errors();
-        reports.extend(errors.into_iter().map(|error| make_report(error, filename)));
+        reports.extend_fatal(errors.into_iter().map(|error| make_report(error, filename)));
 
         ast
     } else {
         None
     };
 
-    (result, reports)
+    result
 }
 
 fn make_report<'src, 'tokens, T: Display>(

@@ -12,22 +12,18 @@ use crate::{
         source_writer::SourceWriter,
     },
     composite, mapper,
-    name_resolution::ResolutionMetadata,
+    preprocessing::{BasicMetadata, ResolutionMetadata},
     typescript::{idents::TypeScriptNamingRules, types::emit_types},
 };
 
 mod idents;
 mod types;
 
-fn convert_types(types: TypeSet<ResolutionMetadata>) -> TypeSet<TypeScriptMetadata> {
+fn convert_types(types: TypeSet<BasicMetadata>) -> TypeSet<TypeScriptMetadata> {
     name(types, TypeScriptNamingRules, AddName)
 }
 
-pub fn generate_types(
-    types: TypeSet<ResolutionMetadata>,
-    output: &Path,
-    to_file: bool,
-) -> Result<()> {
+pub fn generate_types(types: TypeSet<BasicMetadata>, output: &Path, to_file: bool) -> Result<()> {
     let types = convert_types(types);
 
     if to_file {
@@ -83,10 +79,10 @@ composite! {
 }
 
 mapper! {
-    fn AddName(resolution: ResolutionMetadata, name: NameMetadata) -> TypeScriptMetadata {
+    fn AddName(basic: BasicMetadata, name: NameMetadata) -> TypeScriptMetadata {
         TypeScriptInfo {
             name,
-            resolution,
+            resolution: basic.resolution,
         }
     }
 }

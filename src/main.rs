@@ -2,26 +2,27 @@ use std::{
     fmt::Display,
     fs,
     io::{self, BufWriter, Write},
-    ops::Range,
     path::{Path, PathBuf},
     process::ExitCode,
 };
 
 use anstream::{stderr, stdout};
 use anstyle::{AnsiColor, Color, Style};
-use ariadne::{Report, Source};
+use ariadne::Source;
 use clap::{ArgAction, Parser, Subcommand};
 
 use crate::{
     ast::TypeSet,
-    name_resolution::{ResolutionMetadata, resolve_and_check},
+    preprocessing::{BasicMetadata, preprocess},
+    reports::Reports,
     syntax::parse,
 };
 
 pub mod ast;
 pub mod codegen;
 pub mod metadata;
-pub mod name_resolution;
+pub mod preprocessing;
+pub mod reports;
 pub mod rust;
 pub mod syntax;
 pub mod typescript;
@@ -152,31 +153,29 @@ fn handle_io_result(result: io::Result<()>) -> ExitCode {
     }
 }
 
-type Reports<'filename> = Vec<Report<'static, (&'filename str, Range<usize>)>>;
-
 /// Loads and parses the file, printing any errors
-fn load_file(file: &Path) -> Result<TypeSet<ResolutionMetadata>, ExitCode> {
+fn load_file(file: &Path) -> Result<TypeSet<BasicMetadata>, ExitCode> {
     let filename = file.to_string_lossy();
     let src = fs::read_to_string(file)
         .inspect_err(print_error)
         .map_err(|_| ExitCode::from(exit_codes::IO))?;
+    let mut reports = Reports::default();
 
-    let (ast, mut reports) = parse(&src, &filename);
+    let ast = parse(&src, &mut reports, &filename);
 
     let ast = if let Some(ast) = ast {
-        let (ast, new_reports) = resolve_and_check(ast, &filename);
-        reports.extend(new_reports);
+        let ast = preprocess(ast, &mut reports, &filename);
         Some(ast)
     } else {
         None
     };
 
-    let has_errors = !reports.is_empty();
+    let has_errors = reports.has_fatal();
     if has_errors {
         let mut stream = BufWriter::new(stderr().lock());
         let mut cache = (filename.as_ref(), Source::from(src.as_str()));
 
-        for report in reports {
+        for report in &reports {
             report
                 .write(&mut cache, &mut stream)
                 // If writing the report failed, then printing the error will probably fail too, but might as well try

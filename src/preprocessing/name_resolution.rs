@@ -6,9 +6,10 @@ use std::{
 use ariadne::{Color, Label, Report, ReportKind};
 
 use crate::{
-    Reports,
     ast::{Enum, Field, Identifier, List, NamedType, Primitive, Struct, Type, TypeSet, Variant},
     metadata::Metadata,
+    preprocessing::{BasicInfo, BasicMetadata},
+    reports::Reports,
     syntax::{Span, SpanMetadata},
 };
 
@@ -18,22 +19,22 @@ struct NameInfo {
     span: Span,
 }
 
-pub fn resolve_and_check(
+pub fn resolve_names<'filename>(
     TypeSet {
         version,
         types,
-        metadata: (),
+        metadata,
     }: TypeSet<SpanMetadata>,
-    filename: &'_ str,
-) -> (TypeSet<ResolutionMetadata>, Reports<'_>) {
+    mut reports: &mut Reports<'filename>,
+    filename: &'filename str,
+) -> TypeSet<BasicMetadata> {
     let mut names: HashMap<String, NameInfo> = HashMap::new();
-    let mut reports = Vec::new();
 
     for (index, r#type) in types.iter().enumerate() {
         let name = &r#type.name;
 
         match names.entry(name.clone()) {
-            Entry::Occupied(entry) => reports.push(make_double_label_report(
+            Entry::Occupied(entry) => reports.add_fatal(make_double_label_report(
                 format!("the name '{name}' was declared multiple times"),
                 format!("the name '{name}' was used again here"),
                 r#type.metadata.span,
@@ -56,23 +57,26 @@ pub fn resolve_and_check(
             |NamedType {
                  name,
                  r#type,
-                 metadata: _,
+                 metadata,
              }| NamedType {
                 name,
                 r#type: resolve_type(r#type, &names, filename, &mut reports),
-                metadata: (),
+                metadata: BasicInfo {
+                    resolution: (),
+                    span: metadata,
+                },
             },
         )
         .collect();
 
-    (
-        TypeSet {
-            version,
-            types,
-            metadata: (),
+    TypeSet {
+        version,
+        types,
+        metadata: BasicInfo {
+            resolution: (),
+            span: metadata,
         },
-        reports,
-    )
+    }
 }
 
 fn resolve_type<'filename>(
@@ -80,12 +84,9 @@ fn resolve_type<'filename>(
     names: &HashMap<String, NameInfo>,
     filename: &'filename str,
     reports: &mut Reports<'filename>,
-) -> Type<ResolutionMetadata> {
+) -> Type<BasicMetadata> {
     match r#type {
-        Type::Struct(Struct {
-            fields,
-            metadata: (),
-        }) => {
+        Type::Struct(Struct { fields, metadata }) => {
             check_unique(
                 fields
                     .iter()
@@ -101,24 +102,27 @@ fn resolve_type<'filename>(
                     |Field {
                          name,
                          r#type,
-                         metadata: _,
+                         metadata,
                      }| Field {
                         name,
                         r#type: resolve_type(r#type, names, filename, reports),
-                        metadata: (),
+                        metadata: BasicInfo {
+                            resolution: (),
+                            span: metadata,
+                        },
                     },
                 )
                 .collect();
 
             Type::Struct(Struct {
                 fields,
-                metadata: (),
+                metadata: BasicInfo {
+                    resolution: (),
+                    span: metadata,
+                },
             })
         }
-        Type::Enum(Enum {
-            variants,
-            metadata: (),
-        }) => {
+        Type::Enum(Enum { variants, metadata }) => {
             check_unique(
                 variants
                     .iter()
@@ -134,39 +138,48 @@ fn resolve_type<'filename>(
                     |Variant {
                          name,
                          r#type,
-                         metadata: _,
+                         metadata,
                      }| Variant {
                         name,
                         r#type: resolve_type(r#type, names, filename, reports),
-                        metadata: (),
+
+                        metadata: BasicInfo {
+                            resolution: (),
+                            span: metadata,
+                        },
                     },
                 )
                 .collect();
 
             Type::Enum(Enum {
                 variants,
-                metadata: (),
+
+                metadata: BasicInfo {
+                    resolution: (),
+                    span: metadata,
+                },
             })
         }
-        Type::List(List {
-            r#type,
-            metadata: (),
-        }) => Type::List(List {
+        Type::List(List { r#type, metadata }) => Type::List(List {
             r#type: Box::new(resolve_type(*r#type, names, filename, reports)),
-            metadata: (),
+
+            metadata: BasicInfo {
+                resolution: (),
+                span: metadata,
+            },
         }),
-        Type::Primitive(Primitive {
+        Type::Primitive(Primitive { r#type, metadata }) => Type::Primitive(Primitive {
             r#type,
-            metadata: (),
-        }) => Type::Primitive(Primitive {
-            r#type,
-            metadata: (),
+            metadata: BasicInfo {
+                resolution: (),
+                span: metadata,
+            },
         }),
         Type::Identifier(Identifier { ident, metadata }) => {
             let index = if let Some(&NameInfo { index, .. }) = names.get(&ident) {
                 index
             } else {
-                reports.push(make_simple_report(
+                reports.add_fatal(make_simple_report(
                     format!("unknown type '{ident}'"),
                     metadata.span,
                     filename,
@@ -177,7 +190,10 @@ fn resolve_type<'filename>(
 
             Type::Identifier(Identifier {
                 ident,
-                metadata: Resolution { index },
+                metadata: BasicInfo {
+                    resolution: index,
+                    span: metadata,
+                },
             })
         }
     }
@@ -193,7 +209,7 @@ fn check_unique<'a, 'filename>(
 
     for (name, span) in iter {
         match names.entry(name) {
-            Entry::Occupied(entry) => reports.push(make_double_label_report(
+            Entry::Occupied(entry) => reports.add_fatal(make_double_label_report(
                 format!("the {type_name} '{name}' was declared multiple times"),
                 format!("the {type_name} '{name}' was declared again here"),
                 span,
@@ -209,18 +225,13 @@ fn check_unique<'a, 'filename>(
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Resolution {
-    pub index: usize,
-}
-
-#[derive(Debug, Clone, Copy)]
 pub struct ResolutionMetadata;
 impl Metadata for ResolutionMetadata {
     type Struct = ();
     type Enum = ();
     type List = ();
     type Primitive = ();
-    type Identifier = Resolution;
+    type Identifier = usize;
 
     type TypeSet = ();
     type Named = ();

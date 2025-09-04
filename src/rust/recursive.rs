@@ -62,7 +62,7 @@ fn process_type(r#type: &mut Type<RustMetadata>, context: &mut BoxContext) -> bo
         Type::List(_list) => false,
         Type::Primitive(_primitive) => false,
         Type::Identifier(identifier) => {
-            let idx = identifier.metadata.resolution.index;
+            let idx = identifier.metadata.resolution;
 
             if idx == context.source {
                 true
@@ -104,7 +104,7 @@ fn has_type_reference_through_alias(
         Type::List(list) => has_type_reference_through_alias(&list.r#type, context),
         Type::Primitive(_primitive) => false,
         Type::Identifier(identifier) => {
-            let index = identifier.metadata.resolution.index;
+            let index = identifier.metadata.resolution;
 
             if index == context.source {
                 true

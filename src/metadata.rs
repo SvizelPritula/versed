@@ -106,14 +106,14 @@ macro_rules! getter {
 
 #[macro_export]
 macro_rules! composite {
-    {struct ($element: ident, $metadata: ident) {$($field: ident: $type: ty | $generic: ident),*}} => {
+    {$visibility: vis struct ($element: ident, $metadata: ident) {$($field: ident: $type: ty | $generic: ident),*}} => {
         #[derive(Debug, Clone)]
-        struct $element<$($generic),*> {
+        $visibility struct $element<$($generic),*> {
             $(pub $field: $generic),*
         }
 
         #[derive(Debug, Clone)]
-        struct $metadata;
+        $visibility struct $metadata;
 
         impl $crate::metadata::Metadata for $metadata {
             type Struct = $element<$(<$type as $crate::metadata::Metadata>::Struct),*>;
