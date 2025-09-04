@@ -49,32 +49,30 @@ include!("utils/test_schemas.inc.rs");
 
 #[test]
 fn rust_type_idents() {
-    translate_and_check(
-        "version v1;
+    translate_and_check(indoc! {r#"
+        version v1;
 
-String = unit;
+        String = unit;
 
-\"\" = struct {
-    vec: struct {}
-};
+        "" = struct {
+            vec: struct {}
+        };
 
-Struct = struct {
-    a: string,
-    b: [int],
-};
-",
-    );
+        Struct = struct {
+            a: string,
+            b: [int],
+        };
+    "#});
 }
 
 #[test]
 fn keyword_idents() {
-    translate_and_check(
-        "version v1;
+    translate_and_check(indoc! {r#"
+        version v1;
 
-\"struct\" = struct {
-    box: int,
-    self: int,
-};
-",
-    );
+        "struct" = struct {
+            box: int,
+            self: int,
+        };
+    "#});
 }

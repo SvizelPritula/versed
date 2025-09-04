@@ -45,31 +45,29 @@ include!("utils/test_schemas.inc.rs");
 
 #[test]
 fn typescript_type_idents() {
-    translate_and_check(
-        "version v1;
+    translate_and_check(indoc! {"
+        version v1;
 
-Map = unit;
-String = struct { a: string };
-Partial = int;
-Lowercase = string;
-",
-    );
+        Map = unit;
+        String = struct { a: string };
+        Partial = int;
+        Lowercase = string;
+    "});
 }
 
 #[test]
 fn keyword_idents() {
-    translate_and_check(
-        "version v1;
+    translate_and_check(indoc! {"
+        version v1;
 
-class = struct {
-    let: int,
-    any: int,
-};
+        class = struct {
+            let: int,
+            any: int,
+        };
 
-let = int;
-type = int;
-any = int;
-of = int;
-",
-    );
+        let = int;
+        type = int;
+        any = int;
+        of = int;
+    "});
 }

@@ -1,3 +1,5 @@
+use indoc::indoc;
+
 #[test]
 fn readme() {
     const CONTENTS: &str = include_str!("../../README.md");
@@ -40,46 +42,57 @@ fn readme() {
 
 #[test]
 fn empty() {
-    translate_and_check(
-        "version v1;
-",
-    );
+    translate_and_check(indoc! {"
+        version v1;
+    "});
 }
 
 #[test]
 fn r#struct() {
-    translate_and_check(
-        "version v1;
+    translate_and_check(indoc! {"
+        version v1;
 
-Point = struct {
-    x: int,
-    y: int
-};
-",
-    );
+        Point = struct {
+            x: int,
+            y: int
+        };
+    "});
 }
 
 #[test]
 fn r#enum() {
-    translate_and_check(
-        "version v1;
+    translate_and_check(indoc! {"
+        version v1;
 
-Color = enum {
-    red: int,
-    green: string,
-    blue: unit
-};
-",
-    );
+        Color = enum {
+            red: int,
+            green: string,
+            blue: unit
+        };
+    "});
+}
+
+#[test]
+fn empty_struct() {
+    translate_and_check(indoc! {"
+        version v1;
+
+        Nothing = struct {};
+    "});
+}
+
+#[test]
+fn empty_enum() {
+    translate_and_check(indoc! {"
+        version v1;
+
+        Impossible = enum {};
+    "});
 }
 
 #[test]
 fn nested_structs_enums() {
-    let mut schema = String::from(
-        "version v1;
-
-Type = ",
-    );
+    let mut schema = String::from("version v1; Type = ");
 
     for _ in 0..50 {
         schema.push_str("struct { a: enum { a: ");
@@ -98,162 +111,150 @@ Type = ",
 
 #[test]
 fn references() {
-    translate_and_check(
-        "version v1;
+    translate_and_check(indoc! {"
+        version v1;
 
-User = struct {
-    name: Name,
-    gender: Gender,
-};
+        User = struct {
+            name: Name,
+            gender: Gender,
+        };
 
-Name = struct { first: string, second: string };
-Gender = enum { male, female, other: string };
-",
-    );
+        Name = struct { first: string, second: string };
+        Gender = enum { male, female, other: string };
+    "});
 }
 
 #[test]
 fn type_alias() {
-    translate_and_check(
-        "version v1;
+    translate_and_check(indoc! {"
+        version v1;
 
-Name = string;
-",
-    );
+        Name = string;
+    "});
 }
 
 #[test]
 fn nested_arrays() {
-    translate_and_check(
-        "version v1;
+    translate_and_check(indoc! {"
+        version v1;
 
-Array = [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[int]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]];
-",
-    );
+        Array = [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[int]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]];
+    "});
 }
 
 #[test]
 fn bad_chars_in_name() {
-    translate_and_check(
-        "version v1;
+    translate_and_check(indoc! {r#"
+        version v1;
 
-\"\" = struct {
-    \"\\\"\": int,
-    \"\\n\": int,
-    \".\": int,
-    \"name-name\": int,
-};
-",
-    );
+        "" = struct {
+            "\"": int,
+            "\n": int,
+            ".": int,
+            "name-name": int,
+        };
+    "#});
 }
 
 #[test]
 fn bad_start_char() {
-    translate_and_check(
-        "version v1;
+    translate_and_check(indoc! {"
+        version v1;
 
-\"10\" = struct {
-    \"1\": int,
-    \"2\": int,
-};
-",
-    );
+        \"10\" = struct {
+            \"1\": int,
+            \"2\": int,
+        };
+    "});
 }
 
 #[test]
 fn similar_names() {
-    translate_and_check(
-        "version v1;
+    translate_and_check(indoc! {"
+        version v1;
 
-a = struct {
-    a_b: int,
-    A_b: int,
-    a_B: int,
-    A_B: int,
-};
+        a = struct {
+            a_b: int,
+            A_b: int,
+            a_B: int,
+            A_B: int,
+        };
 
-A = enum {
-    a_b: int,
-    A_b: int,
-    a_B: int,
-    A_B: int,
-};
-",
-    );
+        A = enum {
+            a_b: int,
+            A_b: int,
+            a_B: int,
+            A_B: int,
+        };
+    "});
 }
 
 #[test]
 fn types_named_like_path() {
-    translate_and_check(
-        "version v1;
+    translate_and_check(indoc! {"
+        version v1;
 
-User = struct {
-    contact: struct {
-        email: string
-    }
-};
+        User = struct {
+            contact: struct {
+                email: string
+            }
+        };
 
-UserContact = struct {
-    email: int
-};
-",
-    );
+        UserContact = struct {
+            email: int
+        };
+    "});
 }
 
 #[test]
 fn recursive_with_list() {
-    translate_and_check(
-        "version v1;
+    translate_and_check(indoc! {"
+        version v1;
 
-User = struct {
-    subordinates: [User]
-};
-",
-    );
+        User = struct {
+            subordinates: [User]
+        };
+    "});
 }
 
 #[test]
 fn recursive_with_enum() {
-    translate_and_check(
-        "version v1;
+    translate_and_check(indoc! {"
+        version v1;
 
-User = struct {
-    admin: enum { some: User, none }
-};
-",
-    );
+        User = struct {
+            admin: enum { some: User, none }
+        };
+    "});
 }
 
 #[test]
 fn mutually_recursive() {
-    translate_and_check(
-        "version v1;
+    translate_and_check(indoc! {"
+        version v1;
 
-A = struct { b: B };
-B = struct { c: C };
-C = struct { d: D };
-D = struct { a: A };
-",
-    );
+        A = struct { b: B };
+        B = struct { c: C };
+        C = struct { d: D };
+        D = struct { a: A };
+    "});
 }
 
 #[test]
 fn recursive_alias() {
-    translate_and_check(
-        "version v1;
+    translate_and_check(indoc! {"
+        version v1;
 
-A = [A];
-B = struct { a: A };
-",
-    );
+        A = [A];
+        B = struct { a: A };
+    "});
 }
 
 #[test]
 fn self_alias() {
-    translate_and_check(
-        "version v1;
+    translate_and_check(indoc! {"
+        version v1;
 
-A = A;
-",
-    );
+        A = A;
+    "});
 }
