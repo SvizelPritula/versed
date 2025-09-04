@@ -2,23 +2,19 @@ use std::{env, fs, process::Command};
 
 use tempfile::tempdir;
 
-const MOD_CONTENT: &str = concat!(
-    "#[allow(unused_imports)]\n",
-    "use v1 as _;\n",
-    "fn main() {}\n"
-);
+const MOD_CONTENT: &str = "let a: object = v1;\n";
 
 fn translate_and_check(schema: &str) {
     let dir = tempdir().unwrap();
 
-    let mod_path = dir.path().join("mod.rs");
-    fs::write(&mod_path, MOD_CONTENT).unwrap();
+    let index_path = dir.path().join("index.ts");
+    fs::write(&index_path, MOD_CONTENT).unwrap();
 
     let schema_path = dir.path().join("schema.vd");
     fs::write(&schema_path, schema).unwrap();
 
     let output = Command::new(env!("CARGO_BIN_EXE_versed"))
-        .arg("rust")
+        .arg("typescript")
         .arg("types")
         .arg(schema_path)
         .arg(dir.path())
@@ -31,37 +27,31 @@ fn translate_and_check(schema: &str) {
         String::from_utf8_lossy(&output.stderr)
     );
 
-    let output = Command::new("rustc")
-        .arg(mod_path)
-        .arg("--out-dir")
-        .arg(dir.path())
+    let output = Command::new("tsc")
+        .arg("--module")
+        .arg("esnext")
+        .arg(index_path)
         .output()
         .unwrap();
 
     assert!(
         output.status.success(),
-        "Error running rustc:\n{}",
-        String::from_utf8_lossy(&output.stderr)
+        "Error running tsc:\n{}",
+        String::from_utf8_lossy(&output.stdout)
     );
 }
 
 include!("utils/test_schemas.inc.rs");
 
 #[test]
-fn rust_type_idents() {
+fn typescript_type_idents() {
     translate_and_check(
         "version v1;
 
-String = unit;
-
-\"\" = struct {
-    vec: struct {}
-};
-
-Struct = struct {
-    a: string,
-    b: [int],
-};
+Map = unit;
+String = struct { a: string };
+Partial = int;
+Lowercase = string;
 ",
     );
 }
@@ -71,10 +61,15 @@ fn keyword_idents() {
     translate_and_check(
         "version v1;
 
-\"struct\" = struct {
-    box: int,
-    self: int,
+class = struct {
+    let: int,
+    any: int,
 };
+
+let = int;
+type = int;
+any = int;
+of = int;
 ",
     );
 }
