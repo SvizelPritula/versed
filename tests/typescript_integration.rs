@@ -27,12 +27,7 @@ fn translate_and_check(schema: &str) {
         String::from_utf8_lossy(&output.stderr)
     );
 
-    let output = Command::new("tsc")
-        .arg("--module")
-        .arg("esnext")
-        .arg(index_path)
-        .output()
-        .unwrap();
+    let output = Command::new("tsc").arg(index_path).output().unwrap();
 
     assert!(
         output.status.success(),

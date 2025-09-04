@@ -67,7 +67,7 @@ fn write_to_file(
 fn add_import_to_file(module_name: &str, path: &Path) -> Result<()> {
     add_line_to_file(
         path,
-        format_args!("import * as {module_name} from \"{module_name}\";"),
+        format_args!("import * as {module_name} from \"./{module_name}\";"),
     )
 }
 
