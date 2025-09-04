@@ -10,11 +10,17 @@ pub fn emit_types(
     writer: &mut SourceWriter<impl Write>,
     types: &TypeSet<TypeScriptMetadata>,
 ) -> Result<()> {
-    for r#type in &types.types {
+    for (index, r#type) in types.types.iter().enumerate() {
         writer.write("export type ")?;
         writer.write(type_name(&r#type.r#type))?;
         writer.write(" = ")?;
-        emit_type(writer, types, &r#type.r#type)?;
+
+        if is_anomalously_recursive(&r#type.r#type, index) {
+            writer.write("never")?;
+        } else {
+            emit_type(writer, types, &r#type.r#type)?;
+        }
+
         writer.write_nl(";")?;
         writer.blank_line();
     }
@@ -106,5 +112,13 @@ fn type_name(r#type: &Type<TypeScriptMetadata>) -> &str {
         Type::List(list) => &list.metadata.name,
         Type::Primitive(primitive) => &primitive.metadata.name,
         Type::Identifier(identifier) => &identifier.metadata.name,
+    }
+}
+
+fn is_anomalously_recursive(r#type: &Type<TypeScriptMetadata>, index: usize) -> bool {
+    if let Type::Identifier(identifier) = r#type {
+        identifier.metadata.resolution == index
+    } else {
+        false
     }
 }
