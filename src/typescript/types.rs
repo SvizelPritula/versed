@@ -19,6 +19,10 @@ pub fn emit_types(
         writer.blank_line();
     }
 
+    if types.types.is_empty() {
+        writer.write_nl("export {};")?;
+    }
+
     Ok(())
 }
 
