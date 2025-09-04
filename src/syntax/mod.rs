@@ -25,7 +25,7 @@ pub fn parse<'filename>(
     let (tokens, errors) = lexer().parse(src).into_output_errors();
     reports.extend_fatal(errors.into_iter().map(|error| make_report(error, filename)));
 
-    let result = if let Some(tokens) = tokens {
+    if let Some(tokens) = tokens {
         let tokens = tokens
             .as_slice()
             .map((src.len()..src.len()).into(), |(t, s)| (t, s));
@@ -36,9 +36,7 @@ pub fn parse<'filename>(
         ast
     } else {
         None
-    };
-
-    result
+    }
 }
 
 fn make_report<'src, 'tokens, T: Display>(

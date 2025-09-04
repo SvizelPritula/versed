@@ -19,10 +19,9 @@ impl<'filename> Reports<'filename> {
     }
 
     pub fn extend_fatal<I: IntoIterator<Item = Report<'filename>>>(&mut self, reports: I) {
-        self.reports.extend(reports.into_iter().map(|report| {
+        self.reports.extend(reports.into_iter().inspect(|_| {
             // A bit of a hack, but I don't see a better way to do this, or why it wouldn't work.
             self.has_fatal = true;
-            report
         }));
     }
 

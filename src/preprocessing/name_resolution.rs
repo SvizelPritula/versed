@@ -25,7 +25,7 @@ pub fn resolve_names<'filename>(
         types,
         metadata,
     }: TypeSet<SpanMetadata>,
-    mut reports: &mut Reports<'filename>,
+    reports: &mut Reports<'filename>,
     filename: &'filename str,
 ) -> TypeSet<BasicMetadata> {
     let mut names: HashMap<String, NameInfo> = HashMap::new();
@@ -60,7 +60,7 @@ pub fn resolve_names<'filename>(
                  metadata,
              }| NamedType {
                 name,
-                r#type: resolve_type(r#type, &names, filename, &mut reports),
+                r#type: resolve_type(r#type, &names, filename, reports),
                 metadata: BasicInfo {
                     resolution: (),
                     span: metadata,
