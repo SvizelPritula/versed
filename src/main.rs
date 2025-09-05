@@ -1,15 +1,16 @@
 use std::{
     fmt::Display,
     fs,
-    io::{self, BufWriter, Write},
+    io::{self, BufWriter, Write, stdout},
     path::{Path, PathBuf},
     process::ExitCode,
 };
 
-use anstream::{stderr, stdout};
+use anstream::stderr;
 use anstyle::{AnsiColor, Color, Style};
 use ariadne::Source;
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand, ValueHint};
+use clap_complete::{Generator, Shell};
 
 use crate::{
     ast::TypeSet,
@@ -43,11 +44,13 @@ enum Command {
     /// Will exit with exit code 0 if it is and with exit code 1 if it isn't.
     Check {
         /// The path to the file to check
+        #[arg(value_hint = ValueHint::FilePath)]
         file: PathBuf,
     },
     /// Print the schema version from the header of a schema file
     Version {
         /// The path to the schema file
+        #[arg(value_hint = ValueHint::FilePath)]
         file: PathBuf,
     },
     /// Commands related to Rust
@@ -61,6 +64,11 @@ enum Command {
         #[command(subcommand)]
         command: TypeScriptCommand,
     },
+    /// Generate a tab-completion script for your shell
+    Completions {
+        /// The shell to target
+        shell: Shell,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -68,8 +76,10 @@ enum RustCommand {
     /// Generate type declarations
     Types {
         /// The path to the schema file
+        #[arg(value_hint = ValueHint::FilePath)]
         file: PathBuf,
         /// The path to the directory in which to create a file with the generated types
+        #[arg(value_hint = ValueHint::AnyPath)]
         output: PathBuf,
         /// Interpret <OUTPUT> as a file instead of as a directory
         #[arg(short = 'f', long)]
@@ -88,8 +98,10 @@ enum TypeScriptCommand {
     /// Generate type declarations
     Types {
         /// The path to the schema file
+        #[arg(value_hint = ValueHint::FilePath)]
         file: PathBuf,
         /// The path to the directory in which to create a file with the generated types
+        #[arg(value_hint = ValueHint::AnyPath)]
         output: PathBuf,
         /// Interpret <OUTPUT> as a file instead of as a directory
         #[arg(short = 'f', long)]
@@ -145,6 +157,17 @@ fn main() -> ExitCode {
             Ok(types) => handle_io_result(typescript::generate_types(types, &output, to_file)),
             Err(code) => code,
         },
+        Command::Completions { shell } => handle_io_result({
+            let mut command = Args::command();
+            command.set_bin_name(command.get_name().to_string());
+            command.build();
+
+            let mut file = stdout().lock();
+
+            shell
+                .try_generate(&command, &mut file)
+                .and_then(|()| file.flush())
+        }),
     }
 }
 
