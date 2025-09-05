@@ -9,16 +9,17 @@ use crate::{
     ast::TypeSet,
     codegen::{
         file_patching::add_line_to_file,
-        naming_pass::{name, NameMetadata},
+        naming_pass::{NameMetadata, name},
         source_writer::SourceWriter,
     },
     composite, mapper,
     preprocessing::{BasicMetadata, ResolutionMetadata},
     rust::{
         idents::RustNamingRules,
-        recursive::{mark_boxes, mark_newtypes, BoxMetadata, NewtypeMetadata},
+        recursive::{BoxMetadata, NewtypeMetadata, mark_boxes, mark_newtypes},
         types::emit_types,
-    }, typescript::TypeScriptNamingRules,
+    },
+    typescript::TypeScriptNamingRules,
 };
 
 mod idents;

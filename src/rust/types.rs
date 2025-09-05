@@ -45,7 +45,7 @@ pub fn emit_types(
     };
 
     if context.options.serde {
-        writer.write_nl(r#"use serde::{Serialize, Deserialize};"#)?;
+        writer.write_nl(r#"use serde::{Deserialize, Serialize};"#)?;
         writer.blank_line();
     }
 
@@ -232,7 +232,7 @@ fn write_derive(writer: &mut SourceWriter<impl Write>, context: Context) -> Resu
             writer.write(", ")?;
         }
 
-        writer.write(&name)?;
+        writer.write(name)?;
     }
 
     writer.write_nl(")]")?;
