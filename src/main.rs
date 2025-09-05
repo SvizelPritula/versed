@@ -9,12 +9,13 @@ use std::{
 use anstream::{stderr, stdout};
 use anstyle::{AnsiColor, Color, Style};
 use ariadne::Source;
-use clap::{ArgAction, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 
 use crate::{
     ast::TypeSet,
     preprocessing::{BasicMetadata, preprocess},
     reports::Reports,
+    rust::RustOptions,
     syntax::parse,
 };
 
@@ -71,8 +72,14 @@ enum RustCommand {
         /// The path to the directory in which to create a file with the generated types
         output: PathBuf,
         /// Interpret <OUTPUT> as a file instead of as a directory
-        #[arg(short = 'f', long, action=ArgAction::SetTrue)]
+        #[arg(short = 'f', long)]
         to_file: bool,
+        /// Derive another trait
+        #[arg(short = 'd', long)]
+        derive: Vec<String>,
+        /// Derive Serialize and Deserialize and add appropriate attributes from the serde crate
+        #[arg(short = 's', long)]
+        serde: bool,
     },
 }
 
@@ -85,7 +92,7 @@ enum TypeScriptCommand {
         /// The path to the directory in which to create a file with the generated types
         output: PathBuf,
         /// Interpret <OUTPUT> as a file instead of as a directory
-        #[arg(short = 'f', long, action=ArgAction::SetTrue)]
+        #[arg(short = 'f', long)]
         to_file: bool,
     },
 }
@@ -117,9 +124,14 @@ fn main() -> ExitCode {
                     file,
                     output,
                     to_file,
+                    derive,
+                    serde,
                 },
         } => match load_file(&file) {
-            Ok(types) => handle_io_result(rust::generate_types(types, &output, to_file)),
+            Ok(types) => {
+                let options = RustOptions::new(serde, derive);
+                handle_io_result(rust::generate_types(types, &options, &output, to_file))
+            }
             Err(code) => code,
         },
         Command::TypeScript {

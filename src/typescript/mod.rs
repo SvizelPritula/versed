@@ -13,11 +13,13 @@ use crate::{
     },
     composite, mapper,
     preprocessing::{BasicMetadata, ResolutionMetadata},
-    typescript::{idents::TypeScriptNamingRules, types::emit_types},
+    typescript::types::emit_types,
 };
 
 mod idents;
 mod types;
+
+pub use idents::TypeScriptNamingRules;
 
 fn convert_types(types: TypeSet<BasicMetadata>) -> TypeSet<TypeScriptMetadata> {
     name(types, TypeScriptNamingRules, AddName)

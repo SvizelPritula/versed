@@ -6,14 +6,13 @@ use std::{
 use crate::{
     ast::{Enum, NamedType, PrimitiveType, Struct, Type, TypeSet},
     codegen::source_writer::SourceWriter,
-    rust::RustMetadata,
+    rust::{RustMetadata, RustOptions},
 };
-
-const DERIVE: &str = "#[derive(Debug, Clone)]";
 
 #[derive(Debug, Clone, Copy)]
 struct Context<'a> {
     types: &'a TypeSet<RustMetadata>,
+    options: &'a RustOptions,
     used_type_names: &'a HashSet<&'a str>,
 }
 
@@ -30,6 +29,7 @@ impl<'a> Context<'a> {
 pub fn emit_types(
     writer: &mut SourceWriter<impl Write>,
     types: &TypeSet<RustMetadata>,
+    options: &RustOptions,
 ) -> Result<()> {
     let mut used_type_names = HashSet::new();
 
@@ -40,8 +40,14 @@ pub fn emit_types(
 
     let context = Context {
         types,
+        options,
         used_type_names: &used_type_names,
     };
+
+    if context.options.serde {
+        writer.write_nl(r#"use serde::{Serialize, Deserialize};"#)?;
+        writer.blank_line();
+    }
 
     for r#type in &types.types {
         if needs_type_alias(&r#type.r#type) {
@@ -90,13 +96,19 @@ fn emit_struct(
     context: Context,
     r#struct: &Struct<RustMetadata>,
 ) -> Result<()> {
-    writer.write_nl(DERIVE)?;
+    write_derive(writer, context)?;
     writer.write("pub struct ")?;
     writer.write(&r#struct.metadata.name)?;
     writer.write_nl(" {")?;
     writer.indent();
 
     for field in &r#struct.fields {
+        if context.options.serde {
+            writer.write(r#"#[serde(rename = ""#)?;
+            writer.write(&field.metadata.serde_name)?;
+            writer.write_nl(r#"")]"#)?;
+        }
+
         writer.write("pub ")?;
         writer.write(&field.metadata.name)?;
         writer.write(": ")?;
@@ -116,13 +128,23 @@ fn emit_enum(
     context: Context,
     r#enum: &Enum<RustMetadata>,
 ) -> Result<()> {
-    writer.write_nl(DERIVE)?;
+    write_derive(writer, context)?;
+    if context.options.serde {
+        writer.write_nl(r#"#[serde(tag = "type", content = "value")]"#)?;
+    }
+
     writer.write("pub enum ")?;
     writer.write(&r#enum.metadata.name)?;
     writer.write_nl(" {")?;
     writer.indent();
 
     for variant in &r#enum.variants {
+        if context.options.serde {
+            writer.write(r#"#[serde(rename = ""#)?;
+            writer.write(&variant.metadata.serde_name)?;
+            writer.write_nl(r#"")]"#)?;
+        }
+
         writer.write(&variant.metadata.name)?;
         writer.write("(")?;
         write_type_name(writer, context, &variant.r#type, variant.metadata.r#box)?;
@@ -142,7 +164,11 @@ fn emit_type_alias(
     r#type: &NamedType<RustMetadata>,
 ) -> Result<()> {
     if r#type.metadata.newtype {
-        writer.write_nl(DERIVE)?;
+        write_derive(writer, context)?;
+        if context.options.serde {
+            writer.write_nl("#[serde(transparent)]")?;
+        }
+
         writer.write("pub struct ")?;
         writer.write(type_name(&r#type.r#type))?;
         writer.write("(pub ")?;
@@ -194,6 +220,22 @@ fn write_type_name(
     if r#box {
         writer.write(">")?;
     }
+
+    Ok(())
+}
+
+fn write_derive(writer: &mut SourceWriter<impl Write>, context: Context) -> Result<()> {
+    writer.write("#[derive(")?;
+
+    for (index, name) in context.options.derives.iter().enumerate() {
+        if index > 0 {
+            writer.write(", ")?;
+        }
+
+        writer.write(&name)?;
+    }
+
+    writer.write_nl(")]")?;
 
     Ok(())
 }
