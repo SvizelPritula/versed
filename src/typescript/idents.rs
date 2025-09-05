@@ -37,8 +37,43 @@ impl IdentRules for TypeScriptTypeIdentRules {
             | "delete" | "do" | "else" | "enum" | "export" | "extends" | "false" | "finally"
             | "for" | "function" | "if" | "import" | "in" | "instanceof" | "new" | "null"
             | "return" | "super" | "switch" | "this" | "throw" | "true" | "try" | "typeof" | "var"
-            | "void" | "while" | "with" | "any" | "boolean" | "never" | "number" | "object"
-            | "string" | "symbol" | "undefined" | "unknown" | "bigint"
+            | "void" | "while" | "with" | "implements" | "interface" | "let" | "package"
+            | "private" | "protected" | "public" | "static" | "yield" | "any" | "await" | "boolean"
+            | "never" | "number" | "object" | "string" | "symbol" | "unknown" | "bigint"
+        )
+    }
+
+    fn reserved_prefix(&self) -> &str {
+        unreachable!("TypeScript has no escapable keywords")
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+pub struct TypeScriptImportIdentRules;
+
+impl IdentRules for TypeScriptImportIdentRules {
+    fn is_start_char(&self, ch: char) -> bool {
+        is_start_char(ch)
+    }
+
+    fn is_continue_char(&self, ch: char) -> bool {
+        is_continue_char(ch)
+    }
+
+    fn is_reserved(&self, _str: &str) -> bool {
+        false
+    }
+
+    #[rustfmt::skip]
+    fn is_always_reserved(&self, str: &str) -> bool {
+        matches!(
+            str,
+            | "break" | "case" | "catch" | "class" | "const" | "continue" | "debugger" | "default"
+            | "delete" | "do" | "else" | "enum" | "export" | "extends" | "false" | "finally"
+            | "for" | "function" | "if" | "import" | "in" | "instanceof" | "new" | "null"
+            | "return" | "super" | "switch" | "this" | "throw" | "true" | "try" | "typeof" | "var"
+            | "void" | "while" | "with" | "implements" | "interface" | "let" | "package"
+            | "private" | "protected" | "public" | "static" | "yield" | "await"
         )
     }
 
@@ -85,6 +120,6 @@ impl NamingRules for TypeScriptNamingRules {
         (KebabCase, TypeScriptMemberIdentRules)
     }
     fn version(&self) -> impl NamingRule {
-        (CamelCase, TypeScriptTypeIdentRules)
+        (CamelCase, TypeScriptImportIdentRules)
     }
 }

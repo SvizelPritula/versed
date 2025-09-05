@@ -22,7 +22,7 @@ fn readme() {
                         body.insert_str(0, "version v1;\n");
                     }
 
-                    translate_and_check(&body);
+                    check(&body);
                 }
 
                 in_code_block = false;
@@ -42,14 +42,14 @@ fn readme() {
 
 #[test]
 fn empty() {
-    translate_and_check(indoc! {"
+    check(indoc! {"
         version v1;
     "});
 }
 
 #[test]
 fn r#struct() {
-    translate_and_check(indoc! {"
+    check(indoc! {"
         version v1;
 
         Point = struct {
@@ -61,7 +61,7 @@ fn r#struct() {
 
 #[test]
 fn r#enum() {
-    translate_and_check(indoc! {"
+    check(indoc! {"
         version v1;
 
         Color = enum {
@@ -74,7 +74,7 @@ fn r#enum() {
 
 #[test]
 fn empty_struct() {
-    translate_and_check(indoc! {"
+    check(indoc! {"
         version v1;
 
         Nothing = struct {};
@@ -83,7 +83,7 @@ fn empty_struct() {
 
 #[test]
 fn empty_enum() {
-    translate_and_check(indoc! {"
+    check(indoc! {"
         version v1;
 
         Impossible = enum {};
@@ -106,12 +106,12 @@ fn nested_structs_enums() {
 
     schema.push_str(";");
 
-    translate_and_check(&schema)
+    check(&schema)
 }
 
 #[test]
 fn references() {
-    translate_and_check(indoc! {"
+    check(indoc! {"
         version v1;
 
         User = struct {
@@ -126,7 +126,7 @@ fn references() {
 
 #[test]
 fn type_alias() {
-    translate_and_check(indoc! {"
+    check(indoc! {"
         version v1;
 
         Name = string;
@@ -135,7 +135,7 @@ fn type_alias() {
 
 #[test]
 fn nested_arrays() {
-    translate_and_check(indoc! {"
+    check(indoc! {"
         version v1;
 
         Array = [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[int]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]];
@@ -144,7 +144,7 @@ fn nested_arrays() {
 
 #[test]
 fn bad_chars_in_name() {
-    translate_and_check(indoc! {r#"
+    check(indoc! {r#"
         version v1;
 
         "" = struct {
@@ -158,7 +158,7 @@ fn bad_chars_in_name() {
 
 #[test]
 fn bad_start_char() {
-    translate_and_check(indoc! {"
+    check(indoc! {"
         version v1;
 
         \"10\" = struct {
@@ -170,7 +170,7 @@ fn bad_start_char() {
 
 #[test]
 fn similar_names() {
-    translate_and_check(indoc! {"
+    check(indoc! {"
         version v1;
 
         a = struct {
@@ -191,7 +191,7 @@ fn similar_names() {
 
 #[test]
 fn types_named_like_path() {
-    translate_and_check(indoc! {"
+    check(indoc! {"
         version v1;
 
         User = struct {
@@ -208,7 +208,7 @@ fn types_named_like_path() {
 
 #[test]
 fn recursive_with_list() {
-    translate_and_check(indoc! {"
+    check(indoc! {"
         version v1;
 
         User = struct {
@@ -219,7 +219,7 @@ fn recursive_with_list() {
 
 #[test]
 fn recursive_with_enum() {
-    translate_and_check(indoc! {"
+    check(indoc! {"
         version v1;
 
         User = struct {
@@ -230,7 +230,7 @@ fn recursive_with_enum() {
 
 #[test]
 fn mutually_recursive() {
-    translate_and_check(indoc! {"
+    check(indoc! {"
         version v1;
 
         A = struct { b: B };
@@ -242,7 +242,7 @@ fn mutually_recursive() {
 
 #[test]
 fn recursive_alias() {
-    translate_and_check(indoc! {"
+    check(indoc! {"
         version v1;
 
         A = [A];
@@ -252,7 +252,7 @@ fn recursive_alias() {
 
 #[test]
 fn self_alias() {
-    translate_and_check(indoc! {"
+    check(indoc! {"
         version v1;
 
         A = A;

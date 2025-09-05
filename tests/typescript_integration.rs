@@ -2,13 +2,12 @@ use std::{env, fs, process::Command};
 
 use tempfile::tempdir;
 
-const MOD_CONTENT: &str = "let a: object = v1;\n";
-
-fn translate_and_check(schema: &str) {
+fn check_with_version(schema: &str, version: &str) {
     let dir = tempdir().unwrap();
 
     let index_path = dir.path().join("index.ts");
-    fs::write(&index_path, MOD_CONTENT).unwrap();
+    let index_content = format!("let a: object = {version};\n");
+    fs::write(&index_path, index_content).unwrap();
 
     let schema_path = dir.path().join("schema.vd");
     fs::write(&schema_path, schema).unwrap();
@@ -36,11 +35,15 @@ fn translate_and_check(schema: &str) {
     );
 }
 
+fn check(schema: &str) {
+    check_with_version(schema, "v1");
+}
+
 include!("utils/test_schemas.inc.rs");
 
 #[test]
 fn typescript_type_idents() {
-    translate_and_check(indoc! {"
+    check(indoc! {"
         version v1;
 
         Map = unit;
@@ -52,7 +55,7 @@ fn typescript_type_idents() {
 
 #[test]
 fn keyword_idents() {
-    translate_and_check(indoc! {"
+    check(indoc! {"
         version v1;
 
         class = struct {
@@ -65,4 +68,9 @@ fn keyword_idents() {
         any = int;
         of = int;
     "});
+}
+
+#[test]
+fn keyword_version() {
+    check_with_version("version yield;", "yield_");
 }

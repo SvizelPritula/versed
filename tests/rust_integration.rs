@@ -8,7 +8,7 @@ const MOD_CONTENT: &str = concat!(
     "fn main() {}\n"
 );
 
-fn translate_and_check(schema: &str) {
+fn check(schema: &str) {
     let dir = tempdir().unwrap();
 
     let mod_path = dir.path().join("mod.rs");
@@ -49,7 +49,7 @@ include!("utils/test_schemas.inc.rs");
 
 #[test]
 fn rust_type_idents() {
-    translate_and_check(indoc! {r#"
+    check(indoc! {r#"
         version v1;
 
         String = unit;
@@ -67,7 +67,7 @@ fn rust_type_idents() {
 
 #[test]
 fn keyword_idents() {
-    translate_and_check(indoc! {r#"
+    check(indoc! {r#"
         version v1;
 
         "struct" = struct {
