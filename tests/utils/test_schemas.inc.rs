@@ -1,5 +1,3 @@
-use indoc::indoc;
-
 #[test]
 fn readme() {
     const CONTENTS: &str = include_str!("../../README.md");

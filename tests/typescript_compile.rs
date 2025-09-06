@@ -1,6 +1,11 @@
 use std::{env, fs, process::Command};
 
+use indoc::indoc;
 use tempfile::tempdir;
+
+use utils::CommandExt;
+
+mod utils;
 
 fn check_with_version(schema: &str, version: &str) {
     let dir = tempdir().unwrap();
@@ -12,27 +17,14 @@ fn check_with_version(schema: &str, version: &str) {
     let schema_path = dir.path().join("schema.vd");
     fs::write(&schema_path, schema).unwrap();
 
-    let output = Command::new(env!("CARGO_BIN_EXE_versed"))
+    Command::new(env!("CARGO_BIN_EXE_versed"))
         .arg("typescript")
         .arg("types")
         .arg(schema_path)
         .arg(dir.path())
-        .output()
-        .unwrap();
+        .run_and_check();
 
-    assert!(
-        output.status.success(),
-        "Error running versed:\n{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-
-    let output = Command::new("tsc").arg(index_path).output().unwrap();
-
-    assert!(
-        output.status.success(),
-        "Error running tsc:\n{}",
-        String::from_utf8_lossy(&output.stdout)
-    );
+    Command::new("tsc").arg(index_path).run_and_check();
 }
 
 fn check(schema: &str) {

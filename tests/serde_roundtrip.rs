@@ -3,6 +3,10 @@ use std::{env, fs, process::Command};
 use indoc::indoc;
 use tempfile::tempdir;
 
+use utils::CommandExt;
+
+mod utils;
+
 const SCHEMA: &str = indoc! {"
     version v1;
 
@@ -114,27 +118,4 @@ fn roundtrip() {
         .run_and_check();
 
     Command::new("tsc").arg(index_path).run_and_check();
-}
-
-trait CommandExt {
-    fn run_and_check(&mut self) -> String;
-}
-
-impl CommandExt for Command {
-    fn run_and_check(&mut self) -> String {
-        let output = self.output().unwrap();
-
-        assert!(
-            output.status.success(),
-            "Error running {}:\n{}",
-            self.get_program().to_string_lossy(),
-            String::from_utf8_lossy(if output.stderr.is_empty() {
-                &output.stdout
-            } else {
-                &output.stderr
-            })
-        );
-
-        String::from_utf8(output.stdout).unwrap()
-    }
 }

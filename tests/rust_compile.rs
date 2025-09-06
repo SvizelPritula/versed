@@ -1,6 +1,11 @@
 use std::{env, fs, process::Command};
 
+use indoc::indoc;
 use tempfile::tempdir;
+
+use utils::CommandExt;
+
+mod utils;
 
 const MOD_CONTENT: &str = concat!(
     "#[allow(unused_imports)]\n",
@@ -17,32 +22,18 @@ fn check(schema: &str) {
     let schema_path = dir.path().join("schema.vd");
     fs::write(&schema_path, schema).unwrap();
 
-    let output = Command::new(env!("CARGO_BIN_EXE_versed"))
+    Command::new(env!("CARGO_BIN_EXE_versed"))
         .arg("rust")
         .arg("types")
         .arg(schema_path)
         .arg(dir.path())
-        .output()
-        .unwrap();
+        .run_and_check();
 
-    assert!(
-        output.status.success(),
-        "Error running versed:\n{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-
-    let output = Command::new("rustc")
+    Command::new("rustc")
         .arg(mod_path)
         .arg("--out-dir")
         .arg(dir.path())
-        .output()
-        .unwrap();
-
-    assert!(
-        output.status.success(),
-        "Error running rustc:\n{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+        .run_and_check();
 }
 
 include!("utils/test_schemas.inc.rs");
