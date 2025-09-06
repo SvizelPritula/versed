@@ -103,7 +103,7 @@ fn emit_struct(
     writer.indent();
 
     for field in &r#struct.fields {
-        if context.options.serde {
+        if context.options.serde && field.metadata.serde_name != field.metadata.name {
             writer.write(r#"#[serde(rename = ""#)?;
             writer.write(&field.metadata.serde_name)?;
             writer.write_nl(r#"")]"#)?;
@@ -139,7 +139,7 @@ fn emit_enum(
     writer.indent();
 
     for variant in &r#enum.variants {
-        if context.options.serde {
+        if context.options.serde && variant.metadata.serde_name != variant.metadata.name {
             writer.write(r#"#[serde(rename = ""#)?;
             writer.write(&variant.metadata.serde_name)?;
             writer.write_nl(r#"")]"#)?;
