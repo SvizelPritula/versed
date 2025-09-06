@@ -13,6 +13,11 @@ use crate::{
     syntax::{Span, SpanMetadata},
 };
 
+// Placeholder, will panic if used, which it should never be,
+// as it can't escape outside of preprocessing.
+// It does need to be checked inside preprocessing.
+pub const INVALID_INDEX: usize = usize::MAX;
+
 #[derive(Debug)]
 struct NameInfo {
     index: usize,
@@ -185,7 +190,7 @@ fn resolve_type<'filename>(
                     filename,
                 ));
 
-                usize::MAX // Placeholder, will panic if used, which it should never be
+                INVALID_INDEX
             };
 
             Type::Identifier(Identifier {

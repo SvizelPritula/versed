@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use chumsky::{
     ConfigParser, IterParser, Parser,
     error::Rich,
@@ -6,6 +8,7 @@ use chumsky::{
     prelude::{any, choice, empty, end, just, recursive, skip_until, via_parser},
     select,
 };
+use icu_normalizer::ComposingNormalizerBorrowed;
 
 use crate::{
     ast::{
@@ -29,11 +32,21 @@ macro_rules! Parser {
 pub trait Input<'tokens>: ValueInput<'tokens, Token = Token, Span = Span> {}
 impl<'tokens, I: ValueInput<'tokens, Token = Token, Span = Span>> Input<'tokens> for I {}
 
+fn normalize(ident: String) -> String {
+    const NORMALIZER: ComposingNormalizerBorrowed<'static> = ComposingNormalizerBorrowed::new_nfc();
+
+    match NORMALIZER.normalize(&ident) {
+        Cow::Borrowed(_) => ident,
+        Cow::Owned(string) => string,
+    }
+}
+
 fn ident<'tokens, I: Input<'tokens>>() -> Parser![String] {
     select! {
         Token::Ident(ident) => ident,
         Token::QuotedIdent(ident) => ident,
     }
+    .map(normalize)
     .labelled("identifier")
 }
 

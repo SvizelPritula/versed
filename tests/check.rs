@@ -26,5 +26,6 @@ fn unnormalized() {
         version v1;
 
         n\u{303} = enum { value: \u{f1}, none };
+        \"c\u{30c}\" = enum { value: \"\u{10d}\", none };
     "});
 }

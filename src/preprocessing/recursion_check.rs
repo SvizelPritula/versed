@@ -4,7 +4,7 @@ use ariadne::{Color, Label, Report, ReportKind};
 
 use crate::{
     ast::{Type, TypeSet},
-    preprocessing::BasicMetadata,
+    preprocessing::{name_resolution::INVALID_INDEX, BasicMetadata},
     reports::Reports,
     syntax::Span,
 };
@@ -47,6 +47,10 @@ fn check_named(index: usize, context: &mut RecursionContext) -> bool {
 
     if index == context.source {
         return true;
+    }
+
+    if index == INVALID_INDEX {
+        return false;
     }
 
     let result = check_type(&context.types.types[index].r#type, context);
