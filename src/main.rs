@@ -205,8 +205,7 @@ fn load_file(file: &Path) -> Result<TypeSet<BasicMetadata>, ExitCode> {
         None
     };
 
-    let has_errors = reports.has_fatal();
-    if has_errors {
+    if reports.has_any() {
         let mut stream = BufWriter::new(stderr().lock());
         let mut cache = (filename.as_ref(), Source::from(src.as_str()));
 
@@ -220,7 +219,7 @@ fn load_file(file: &Path) -> Result<TypeSet<BasicMetadata>, ExitCode> {
     }
 
     if let Some(ast) = ast
-        && !has_errors
+        && !reports.has_fatal()
     {
         Ok(ast)
     } else {

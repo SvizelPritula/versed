@@ -28,6 +28,10 @@ impl<'filename> Reports<'filename> {
     pub fn has_fatal(&self) -> bool {
         self.has_fatal
     }
+
+    pub fn has_any(&self) -> bool {
+        !self.reports.is_empty()
+    }
 }
 
 impl<'a, 'filename> IntoIterator for &'a Reports<'filename> {

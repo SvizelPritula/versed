@@ -4,15 +4,22 @@ use ariadne::{Color, Label, Report, ReportKind};
 
 use crate::{
     ast::{Type, TypeSet},
-    preprocessing::{name_resolution::INVALID_INDEX, BasicMetadata},
+    preprocessing::{BasicMetadata, name_resolution::INVALID_INDEX},
     reports::Reports,
     syntax::Span,
 };
 
 struct RecursionContext<'types> {
     types: &'types TypeSet<BasicMetadata>,
-    cache: HashMap<usize, bool>,
+    cache: HashMap<usize, CheckResult>,
     source: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum CheckResult {
+    None,
+    ContainsNever,
+    InfiniteDepth,
 }
 
 pub fn check_recursion<'filename>(
@@ -27,7 +34,7 @@ pub fn check_recursion<'filename>(
             source,
         };
 
-        if check_type(&r#type.r#type, &mut context) {
+        if check_type(&r#type.r#type, &mut context) == CheckResult::InfiniteDepth {
             reports.add_nonfatal(make_report(
                 format!(
                     "the type '{name}' will unavoidably have infinite depth",
@@ -40,17 +47,17 @@ pub fn check_recursion<'filename>(
     }
 }
 
-fn check_named(index: usize, context: &mut RecursionContext) -> bool {
+fn check_named(index: usize, context: &mut RecursionContext) -> CheckResult {
     if let Some(result) = context.cache.get(&index) {
         return *result;
     }
 
     if index == context.source {
-        return true;
+        return CheckResult::InfiniteDepth;
     }
 
     if index == INVALID_INDEX {
-        return false;
+        return CheckResult::None;
     }
 
     let result = check_type(&context.types.types[index].r#type, context);
@@ -58,18 +65,22 @@ fn check_named(index: usize, context: &mut RecursionContext) -> bool {
     result
 }
 
-fn check_type(r#type: &Type<BasicMetadata>, context: &mut RecursionContext) -> bool {
+fn check_type(r#type: &Type<BasicMetadata>, context: &mut RecursionContext) -> CheckResult {
     match r#type {
         Type::Struct(r#struct) => r#struct
             .fields
             .iter()
-            .any(|field| check_type(&field.r#type, context)),
+            .map(|field| check_type(&field.r#type, context))
+            .max()
+            .unwrap_or(CheckResult::None),
         Type::Enum(r#enum) => r#enum
             .variants
             .iter()
-            .all(|variant| check_type(&variant.r#type, context)),
-        Type::List(_list) => false,
-        Type::Primitive(_primitive) => false,
+            .map(|variant| check_type(&variant.r#type, context))
+            .min()
+            .unwrap_or(CheckResult::ContainsNever),
+        Type::List(_list) => CheckResult::None,
+        Type::Primitive(_primitive) => CheckResult::None,
         Type::Identifier(identifier) => check_named(identifier.metadata.resolution, context),
     }
 }
