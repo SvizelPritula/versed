@@ -14,7 +14,7 @@ anstream = "0.6.20"
 anstyle = "1.0.11"
 ariadne = "0.5.1"
 chumsky = "0.10.1"
-clap = { version = "4.5.43", features = ["derive"] }
+clap = { version = "4.5.43", features = ["derive", "wrap_help"] }
 clap_complete = "4.5.57"
 icu_normalizer = "2.0.0"
 icu_properties = "2.0.1"

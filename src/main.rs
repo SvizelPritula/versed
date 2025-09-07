@@ -74,6 +74,10 @@ enum Command {
 #[derive(Subcommand, Debug)]
 enum RustCommand {
     /// Generate type declarations
+    /// 
+    /// The generated types will be written to a new file inside the output directory named after
+    /// the version of the schema.
+    /// A corresponding module reference will be added to mod.rs.
     Types {
         /// The path to the schema file
         #[arg(value_hint = ValueHint::FilePath)]
@@ -96,6 +100,10 @@ enum RustCommand {
 #[derive(Subcommand, Debug)]
 enum TypeScriptCommand {
     /// Generate type declarations
+    /// 
+    /// The generated types will be written to a new file inside the output directory named after
+    /// the version of the schema.
+    /// A corresponding import statement will be added to index.ts.
     Types {
         /// The path to the schema file
         #[arg(value_hint = ValueHint::FilePath)]
