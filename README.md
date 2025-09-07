@@ -3,6 +3,9 @@
 [Versed](https://crates.io/crates/versed) is a tool for generating DTO type definitions
 in Rust and TypeScript based on a schema description
 in a simple custom language based on algebraic data types.
+The types it generates can be serialized to JSON,
+using [Serde](https://serde.rs/) in Rust and `JSON.serialize(…)` in TypeScript,
+and deserialized again in any supported language.
 
 ## Example
 
@@ -29,32 +32,41 @@ Contact = enum {
 };
 ```
 
-You can run `versed rust types schema.vs src/schema/`
+You can run `versed rust types schema.vs src/schema/ --serde`
 to generate corresponding Rust type declarations:
 
 ```rs
 // src/schema/v1.rs
-#[derive(Debug, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
     pub name: String,
     pub age: UserAge,
     pub contacts: Vec<Contact>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", content = "value")]
 pub enum UserAge {
+    #[serde(rename = "known")]
     Known(i64),
+    #[serde(rename = "unknown")]
     Unknown(()),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", content = "value")]
 pub enum Contact {
+    #[serde(rename = "phone")]
     Phone(i64),
+    #[serde(rename = "email")]
     Email(String),
+    #[serde(rename = "address")]
     Address(ContactAddress),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContactAddress {
     pub street: String,
     pub city: String,
@@ -66,6 +78,7 @@ You can also run `versed typescript types schema.vs src/schema/`
 to generate TypeScript type declarations:
 
 ```ts
+// src/schema/v1.ts
 export type User = {
     name: string,
     age: (
@@ -100,6 +113,40 @@ export type Contact = (
 
 `versed` automatically converts identifiers based on the naming convention of the target language,
 i.e. PascalCase/snake_case for Rust and PascalCase/camelCase/kebab-case for TypeScript.
+
+## Usage
+
+There are two main commands, `versed rust types` and `versed typescript types`.
+Both take two arguments, the path to the schema and the path to the output directory,
+in that order.
+Versed will write the generated types to a new file inside the output directory
+named after the version of the schema.
+For example, if you run `versed rust types schema.vs src/schema/`
+and `schema.vs` starts with `version v1;`,
+then the types will be written to `src/schema/v1.rs`.
+It will also add an import of this file to `mod.rs` or `index.ts`.
+The directory will be created if it doesn't exist.
+
+You can also use the `-f` or `--to-file` flag to write the types directly to a specified file,
+which will cause the second argument to be interpreted as the path to that file
+instead of a directory.
+For example, `versed rust types schema.vs src/current-schema.rs` will simply
+write the types to `src/current-schema.rs`.
+
+If you only want to check if a schema file is syntactically and semantically well-formed,
+you can use `versed check`.
+There is also `versed version`, which will additionally
+output the version of the schema.
+
+Lastly, there is `versed completions`, which prints out a script for providing tab-completion
+for `versed` for the specified shell.
+For example, you can install tab-completions for bash like this:
+
+```sh
+versed completions bash > ~/.local/share/bash-completion/completions/versed
+```
+
+You can run `versed help` for a more detailed usage description.
 
 ## Schema files
 
