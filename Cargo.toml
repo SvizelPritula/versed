@@ -1,7 +1,9 @@
 [package]
 name = "versed"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2024"
+rust-version = "1.88"
+
 license = "Apache-2.0"
 description = "A tool for generating DTOs and their migrations from schema descriptions"
 categories = ["command-line-utilities", "development-tools", "encoding"]
