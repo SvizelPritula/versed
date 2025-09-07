@@ -14,11 +14,11 @@ anstream = "0.6.20"
 anstyle = "1.0.11"
 ariadne = "0.5.1"
 chumsky = "0.10.1"
-clap = { version = "4.5.43", features = ["derive", "wrap_help"] }
+clap = { version = "4.5.47", features = ["derive", "wrap_help"] }
 clap_complete = "4.5.57"
 icu_normalizer = "2.0.0"
 icu_properties = "2.0.1"
-thiserror = "2.0.12"
+thiserror = "2.0.16"
 
 [dev-dependencies]
 indoc = "2.0.6"
