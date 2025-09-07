@@ -9,7 +9,7 @@ description = "A tool for generating DTOs and their migrations from schema descr
 categories = ["command-line-utilities", "development-tools", "encoding"]
 repository = "https://github.com/SvizelPritula/versed"
 
-exclude = ["/docs/"]
+exclude = ["/docs/", "/.github/"]
 
 [dependencies]
 anstream = "0.6.20"
