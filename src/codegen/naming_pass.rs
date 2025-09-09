@@ -1,7 +1,10 @@
 use std::{collections::HashSet, marker::PhantomData};
 
 use crate::{
-    ast::{Enum, Field, Identifier, List, NamedType, Primitive, Struct, Type, TypeSet, Variant},
+    ast::{
+        Enum, Field, Identifier, List, NamedType, Primitive, Struct, Type, TypeSet, TypeType,
+        Variant,
+    },
     codegen::idents::{CaseType, IdentRules, convert_case, disambiguate},
     metadata::{MapMetadata, Metadata},
 };
@@ -98,13 +101,17 @@ where
     }
 
     fn name_type(&mut self, r#type: Type<A>) -> Type<B> {
-        match r#type {
-            Type::Struct(r#struct) => Type::Struct(self.name_struct(r#struct)),
-            Type::Enum(r#enum) => Type::Enum(self.name_enum(r#enum)),
-            Type::List(list) => Type::List(self.name_list(list)),
-            Type::Primitive(primitive) => Type::Primitive(self.name_primitive(primitive)),
-            Type::Identifier(identifier) => Type::Identifier(self.name_identifier(identifier)),
-        }
+        let r#type = match r#type.r#type {
+            TypeType::Struct(r#struct) => TypeType::Struct(self.name_struct(r#struct)),
+            TypeType::Enum(r#enum) => TypeType::Enum(self.name_enum(r#enum)),
+            TypeType::List(list) => TypeType::List(self.name_list(list)),
+            TypeType::Primitive(primitive) => TypeType::Primitive(self.name_primitive(primitive)),
+            TypeType::Identifier(identifier) => {
+                TypeType::Identifier(self.name_identifier(identifier))
+            }
+        };
+
+        Type { r#type }
     }
 
     fn push_and_name_type(&mut self, r#type: Type<A>, name: String) -> (Type<B>, String) {

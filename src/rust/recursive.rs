@@ -1,7 +1,7 @@
 use std::collections::{HashSet, VecDeque};
 
 use crate::{
-    ast::{Type, TypeSet},
+    ast::{Type, TypeSet, TypeType},
     metadata::Metadata,
     rust::RustMetadata,
 };
@@ -40,8 +40,8 @@ pub fn mark_boxes(types: &mut TypeSet<RustMetadata>) {
 }
 
 fn process_type(r#type: &mut Type<RustMetadata>, context: &mut BoxContext) -> bool {
-    match r#type {
-        Type::Struct(r#struct) => {
+    match &mut r#type.r#type {
+        TypeType::Struct(r#struct) => {
             for field in &mut r#struct.fields {
                 if !field.metadata.r#box {
                     field.metadata.r#box |= process_type(&mut field.r#type, context);
@@ -50,7 +50,7 @@ fn process_type(r#type: &mut Type<RustMetadata>, context: &mut BoxContext) -> bo
 
             false
         }
-        Type::Enum(r#enum) => {
+        TypeType::Enum(r#enum) => {
             for variant in &mut r#enum.variants {
                 if !variant.metadata.r#box {
                     variant.metadata.r#box |= process_type(&mut variant.r#type, context);
@@ -59,9 +59,9 @@ fn process_type(r#type: &mut Type<RustMetadata>, context: &mut BoxContext) -> bo
 
             false
         }
-        Type::List(_list) => false,
-        Type::Primitive(_primitive) => false,
-        Type::Identifier(identifier) => {
+        TypeType::List(_list) => false,
+        TypeType::Primitive(_primitive) => false,
+        TypeType::Identifier(identifier) => {
             let idx = identifier.metadata.resolution;
 
             if idx == context.source {
@@ -98,12 +98,12 @@ fn has_type_reference_through_alias(
     r#type: &Type<RustMetadata>,
     context: &mut NewtypeContext,
 ) -> bool {
-    match r#type {
-        Type::Struct(_struct) => false,
-        Type::Enum(_enum) => false,
-        Type::List(list) => has_type_reference_through_alias(&list.r#type, context),
-        Type::Primitive(_primitive) => false,
-        Type::Identifier(identifier) => {
+    match &r#type.r#type {
+        TypeType::Struct(_struct) => false,
+        TypeType::Enum(_enum) => false,
+        TypeType::List(list) => has_type_reference_through_alias(&list.r#type, context),
+        TypeType::Primitive(_primitive) => false,
+        TypeType::Identifier(identifier) => {
             let index = identifier.metadata.resolution;
 
             if index == context.source {

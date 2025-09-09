@@ -6,7 +6,10 @@ use std::{
 use ariadne::{Color, Label, Report, ReportKind};
 
 use crate::{
-    ast::{Enum, Field, Identifier, List, NamedType, Primitive, Struct, Type, TypeSet, Variant},
+    ast::{
+        Enum, Field, Identifier, List, NamedType, Primitive, Struct, Type, TypeSet, TypeType,
+        Variant,
+    },
     metadata::Metadata,
     preprocessing::{BasicInfo, BasicMetadata},
     reports::Reports,
@@ -90,8 +93,8 @@ fn resolve_type<'filename>(
     filename: &'filename str,
     reports: &mut Reports<'filename>,
 ) -> Type<BasicMetadata> {
-    match r#type {
-        Type::Struct(Struct { fields, metadata }) => {
+    let r#type = match r#type.r#type {
+        TypeType::Struct(Struct { fields, metadata }) => {
             check_unique(
                 fields
                     .iter()
@@ -119,7 +122,7 @@ fn resolve_type<'filename>(
                 )
                 .collect();
 
-            Type::Struct(Struct {
+            TypeType::Struct(Struct {
                 fields,
                 metadata: BasicInfo {
                     resolution: (),
@@ -127,7 +130,7 @@ fn resolve_type<'filename>(
                 },
             })
         }
-        Type::Enum(Enum { variants, metadata }) => {
+        TypeType::Enum(Enum { variants, metadata }) => {
             check_unique(
                 variants
                     .iter()
@@ -156,7 +159,7 @@ fn resolve_type<'filename>(
                 )
                 .collect();
 
-            Type::Enum(Enum {
+            TypeType::Enum(Enum {
                 variants,
 
                 metadata: BasicInfo {
@@ -165,7 +168,7 @@ fn resolve_type<'filename>(
                 },
             })
         }
-        Type::List(List { r#type, metadata }) => Type::List(List {
+        TypeType::List(List { r#type, metadata }) => TypeType::List(List {
             r#type: Box::new(resolve_type(*r#type, names, filename, reports)),
 
             metadata: BasicInfo {
@@ -173,14 +176,14 @@ fn resolve_type<'filename>(
                 span: metadata,
             },
         }),
-        Type::Primitive(Primitive { r#type, metadata }) => Type::Primitive(Primitive {
+        TypeType::Primitive(Primitive { r#type, metadata }) => TypeType::Primitive(Primitive {
             r#type,
             metadata: BasicInfo {
                 resolution: (),
                 span: metadata,
             },
         }),
-        Type::Identifier(Identifier { ident, metadata }) => {
+        TypeType::Identifier(Identifier { ident, metadata }) => {
             let index = if let Some(&NameInfo { index, .. }) = names.get(&ident) {
                 index
             } else {
@@ -193,7 +196,7 @@ fn resolve_type<'filename>(
                 INVALID_INDEX
             };
 
-            Type::Identifier(Identifier {
+            TypeType::Identifier(Identifier {
                 ident,
                 metadata: BasicInfo {
                     resolution: index,
@@ -201,7 +204,9 @@ fn resolve_type<'filename>(
                 },
             })
         }
-    }
+    };
+
+    Type { r#type }
 }
 
 fn check_unique<'a, 'filename>(

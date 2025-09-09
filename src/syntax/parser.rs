@@ -13,7 +13,7 @@ use icu_normalizer::ComposingNormalizerBorrowed;
 use crate::{
     ast::{
         Enum, Field, Identifier, List, NamedType, Primitive, PrimitiveType, Struct, Type, TypeSet,
-        Variant,
+        TypeType, Variant,
     },
     syntax::{
         ExtendVec, IdentSpan, Span, SpanMetadata,
@@ -122,14 +122,14 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
             keyword(Keyword::String).to(PrimitiveType::String),
         ])
         .map(|r#type| {
-            Type::Primitive(Primitive {
+            TypeType::Primitive(Primitive {
                 r#type,
                 metadata: (),
             })
         });
 
         let identifier = ident().map_with(|ident, e| {
-            Type::Identifier(Identifier {
+            TypeType::Identifier(Identifier {
                 ident,
                 metadata: IdentSpan { span: e.span() },
             })
@@ -139,7 +139,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
             .clone()
             .delimited_by(left(Group::Bracket), right(Group::Bracket))
             .map(|r#type| {
-                Type::List(List {
+                TypeType::List(List {
                     r#type: Box::new(r#type),
                     metadata: (),
                 })
@@ -153,11 +153,11 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
         ) -> Parser![T] {
             let field = ident()
                 .map_with(|ident, e| (ident, e.span()))
-                .then(
-                    punct(Punct::Colon)
-                        .ignore_then(r#type.clone())
-                        .or(punct(Punct::Colon).not().to(Type::Primitive(UNIT))),
-                )
+                .then(punct(Punct::Colon).ignore_then(r#type.clone()).or(
+                    punct(Punct::Colon).not().to(Type {
+                        r#type: TypeType::Primitive(UNIT),
+                    }),
+                ))
                 .map(move |((ident, span), r#type)| map_field(ident, r#type, span));
 
             let skip_to_comma = skip_until(
@@ -198,7 +198,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
                 metadata: IdentSpan { span },
             },
             |fields| {
-                Type::Struct(Struct {
+                TypeType::Struct(Struct {
                     fields,
                     metadata: (),
                 })
@@ -214,7 +214,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
                 metadata: IdentSpan { span },
             },
             |variants| {
-                Type::Enum(Enum {
+                TypeType::Enum(Enum {
                     variants,
                     metadata: (),
                 })
@@ -222,7 +222,10 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
             r#type.clone(),
         );
 
-        choice((parens, list, r#struct, r#enum, primitive, identifier))
+        let real_type =
+            choice((list, r#struct, r#enum, primitive, identifier)).map(|r#type| Type { r#type });
+
+        choice((parens, real_type))
     });
 
     let named_type = ident()
@@ -231,7 +234,9 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
         .then(r#type.clone().recover_with(skip_until(
             any().ignored(),
             punct(Punct::Semicolon).rewind().ignored().or(end()),
-            || Type::Primitive(UNIT),
+            || Type {
+                r#type: TypeType::Primitive(UNIT),
+            },
         )))
         .then_ignore(
             punct(Punct::Semicolon)

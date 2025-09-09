@@ -3,7 +3,7 @@ use std::{collections::HashMap, ops::Range};
 use ariadne::{Color, Label, Report, ReportKind};
 
 use crate::{
-    ast::{Type, TypeSet},
+    ast::{Type, TypeSet, TypeType},
     preprocessing::{BasicMetadata, name_resolution::INVALID_INDEX},
     reports::Reports,
     syntax::Span,
@@ -66,22 +66,22 @@ fn check_named(index: usize, context: &mut RecursionContext) -> CheckResult {
 }
 
 fn check_type(r#type: &Type<BasicMetadata>, context: &mut RecursionContext) -> CheckResult {
-    match r#type {
-        Type::Struct(r#struct) => r#struct
+    match &r#type.r#type {
+        TypeType::Struct(r#struct) => r#struct
             .fields
             .iter()
             .map(|field| check_type(&field.r#type, context))
             .max()
             .unwrap_or(CheckResult::None),
-        Type::Enum(r#enum) => r#enum
+        TypeType::Enum(r#enum) => r#enum
             .variants
             .iter()
             .map(|variant| check_type(&variant.r#type, context))
             .min()
             .unwrap_or(CheckResult::ContainsNever),
-        Type::List(_list) => CheckResult::None,
-        Type::Primitive(_primitive) => CheckResult::None,
-        Type::Identifier(identifier) => check_named(identifier.metadata.resolution, context),
+        TypeType::List(_list) => CheckResult::None,
+        TypeType::Primitive(_primitive) => CheckResult::None,
+        TypeType::Identifier(identifier) => check_named(identifier.metadata.resolution, context),
     }
 }
 

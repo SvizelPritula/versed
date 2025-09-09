@@ -1,7 +1,7 @@
 use std::io::{Result, Write};
 
 use crate::{
-    ast::{PrimitiveType, Type, TypeSet},
+    ast::{PrimitiveType, Type, TypeSet, TypeType},
     codegen::source_writer::SourceWriter,
     typescript::TypeScriptMetadata,
 };
@@ -37,8 +37,8 @@ fn emit_type(
     types: &TypeSet<TypeScriptMetadata>,
     r#type: &Type<TypeScriptMetadata>,
 ) -> Result<()> {
-    match r#type {
-        Type::Struct(r#struct) => {
+    match &r#type.r#type {
+        TypeType::Struct(r#struct) => {
             writer.write_nl("{")?;
             writer.indent();
 
@@ -52,7 +52,7 @@ fn emit_type(
             writer.dedent();
             writer.write("}")?;
         }
-        Type::Enum(r#enum) => {
+        TypeType::Enum(r#enum) => {
             if !r#enum.variants.is_empty() {
                 writer.write_nl("(")?;
                 writer.indent();
@@ -84,11 +84,11 @@ fn emit_type(
                 writer.write("never")?;
             }
         }
-        Type::List(list) => {
+        TypeType::List(list) => {
             emit_type(writer, types, &list.r#type)?;
             writer.write("[]")?;
         }
-        Type::Primitive(primitive) => {
+        TypeType::Primitive(primitive) => {
             let keyword = match primitive.r#type {
                 PrimitiveType::String => "string",
                 PrimitiveType::Number => "number",
@@ -96,7 +96,7 @@ fn emit_type(
             };
             writer.write(keyword)?;
         }
-        Type::Identifier(identifier) => {
+        TypeType::Identifier(identifier) => {
             let r#type = &types.types[identifier.metadata.resolution].r#type;
             writer.write(type_name(r#type))?;
         }
@@ -106,17 +106,17 @@ fn emit_type(
 }
 
 fn type_name(r#type: &Type<TypeScriptMetadata>) -> &str {
-    match r#type {
-        Type::Struct(r#struct) => &r#struct.metadata.name,
-        Type::Enum(r#enum) => &r#enum.metadata.name,
-        Type::List(list) => &list.metadata.name,
-        Type::Primitive(primitive) => &primitive.metadata.name,
-        Type::Identifier(identifier) => &identifier.metadata.name,
+    match &r#type.r#type {
+        TypeType::Struct(r#struct) => &r#struct.metadata.name,
+        TypeType::Enum(r#enum) => &r#enum.metadata.name,
+        TypeType::List(list) => &list.metadata.name,
+        TypeType::Primitive(primitive) => &primitive.metadata.name,
+        TypeType::Identifier(identifier) => &identifier.metadata.name,
     }
 }
 
 fn is_anomalously_recursive(r#type: &Type<TypeScriptMetadata>, index: usize) -> bool {
-    if let Type::Identifier(identifier) = r#type {
+    if let TypeType::Identifier(identifier) = &r#type.r#type {
         identifier.metadata.resolution == index
     } else {
         false

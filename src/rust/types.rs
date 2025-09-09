@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    ast::{Enum, NamedType, PrimitiveType, Struct, Type, TypeSet},
+    ast::{Enum, NamedType, PrimitiveType, Struct, Type, TypeSet, TypeType},
     codegen::source_writer::SourceWriter,
     rust::{RustMetadata, RustOptions},
 };
@@ -68,24 +68,24 @@ fn emit_type_recursive(
     context: Context,
     r#type: &Type<RustMetadata>,
 ) -> Result<()> {
-    match r#type {
-        Type::Struct(r#struct) => {
+    match &r#type.r#type {
+        TypeType::Struct(r#struct) => {
             emit_struct(writer, context, r#struct)?;
 
             for field in &r#struct.fields {
                 emit_type_recursive(writer, context, &field.r#type)?;
             }
         }
-        Type::Enum(r#enum) => {
+        TypeType::Enum(r#enum) => {
             emit_enum(writer, context, r#enum)?;
 
             for variant in &r#enum.variants {
                 emit_type_recursive(writer, context, &variant.r#type)?;
             }
         }
-        Type::List(list) => emit_type_recursive(writer, context, &list.r#type)?,
-        Type::Primitive(_) => {}
-        Type::Identifier(_) => {}
+        TypeType::List(list) => emit_type_recursive(writer, context, &list.r#type)?,
+        TypeType::Primitive(_) => {}
+        TypeType::Identifier(_) => {}
     }
 
     Ok(())
@@ -196,23 +196,23 @@ fn write_type_name(
         writer.write("<")?;
     }
 
-    match r#type {
-        Type::Struct(r#struct) => writer.write(&r#struct.metadata.name)?,
-        Type::Enum(r#enum) => writer.write(&r#enum.metadata.name)?,
-        Type::List(list) => {
+    match &r#type.r#type {
+        TypeType::Struct(r#struct) => writer.write(&r#struct.metadata.name)?,
+        TypeType::Enum(r#enum) => writer.write(&r#enum.metadata.name)?,
+        TypeType::List(list) => {
             writer.write(context.rust_type("Vec", "::std::vec::Vec"))?;
             writer.write("<")?;
             write_type_name(writer, context, &list.r#type, false)?;
             writer.write(">")?;
         }
-        Type::Primitive(primitive) => {
+        TypeType::Primitive(primitive) => {
             writer.write(match primitive.r#type {
                 PrimitiveType::String => context.rust_type("String", "::std::string::String"),
                 PrimitiveType::Number => context.rust_type("i64", "::std::primitive::i64"),
                 PrimitiveType::Unit => "()",
             })?;
         }
-        Type::Identifier(identifier) => writer.write(type_name(
+        TypeType::Identifier(identifier) => writer.write(type_name(
             &context.types.types[identifier.metadata.resolution].r#type,
         ))?,
     }
@@ -241,37 +241,37 @@ fn write_derive(writer: &mut SourceWriter<impl Write>, context: Context) -> Resu
 }
 
 fn needs_type_alias(r#type: &Type<RustMetadata>) -> bool {
-    !matches!(r#type, Type::Struct(_) | Type::Enum(_))
+    !matches!(r#type.r#type, TypeType::Struct(_) | TypeType::Enum(_))
 }
 
 fn type_name(r#type: &Type<RustMetadata>) -> &str {
-    match r#type {
-        Type::Struct(r#struct) => &r#struct.metadata.name,
-        Type::Enum(r#enum) => &r#enum.metadata.name,
-        Type::List(list) => &list.metadata.name,
-        Type::Primitive(primitive) => &primitive.metadata.name,
-        Type::Identifier(identifier) => &identifier.metadata.name,
+    match &r#type.r#type {
+        TypeType::Struct(r#struct) => &r#struct.metadata.name,
+        TypeType::Enum(r#enum) => &r#enum.metadata.name,
+        TypeType::List(list) => &list.metadata.name,
+        TypeType::Primitive(primitive) => &primitive.metadata.name,
+        TypeType::Identifier(identifier) => &identifier.metadata.name,
     }
 }
 
 fn add_all_rust_type_names<'a>(r#type: &'a Type<RustMetadata>, set: &mut HashSet<&'a str>) {
-    match r#type {
-        Type::Struct(r#struct) => {
+    match &r#type.r#type {
+        TypeType::Struct(r#struct) => {
             set.insert(&r#struct.metadata.name);
 
             for field in &r#struct.fields {
                 add_all_rust_type_names(&field.r#type, set);
             }
         }
-        Type::Enum(r#enum) => {
+        TypeType::Enum(r#enum) => {
             set.insert(&r#enum.metadata.name);
 
             for variant in &r#enum.variants {
                 add_all_rust_type_names(&variant.r#type, set);
             }
         }
-        Type::List(list) => add_all_rust_type_names(&list.r#type, set),
-        Type::Primitive(_primitive) => {}
-        Type::Identifier(_identifier) => {}
+        TypeType::List(list) => add_all_rust_type_names(&list.r#type, set),
+        TypeType::Primitive(_primitive) => {}
+        TypeType::Identifier(_identifier) => {}
     }
 }

@@ -1,7 +1,12 @@
 use crate::metadata::Metadata;
 
 #[derive(Debug, Clone)]
-pub enum Type<M: Metadata> {
+pub struct Type<M: Metadata> {
+    pub r#type: TypeType<M>,
+}
+
+#[derive(Debug, Clone)]
+pub enum TypeType<M: Metadata> {
     Struct(Struct<M>),
     Enum(Enum<M>),
     List(List<M>),
