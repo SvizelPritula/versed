@@ -23,6 +23,7 @@ use crate::{
 pub mod ast;
 pub mod codegen;
 pub mod metadata;
+pub mod migrations;
 pub mod preprocessing;
 pub mod reports;
 pub mod rust;
@@ -53,6 +54,11 @@ enum Command {
         #[arg(value_hint = ValueHint::FilePath)]
         file: PathBuf,
     },
+    /// Commands for creating migrations
+    Migration {
+        #[command(subcommand)]
+        command: MigrationCommand,
+    },
     /// Commands related to Rust
     Rust {
         #[command(subcommand)]
@@ -68,6 +74,16 @@ enum Command {
     Completions {
         /// The shell to target
         shell: Shell,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum MigrationCommand {
+    /// Start a new migration, annotating and copying the schema file
+    Begin {
+        /// The path to the schema file
+        #[arg(value_hint = ValueHint::FilePath)]
+        file: PathBuf,
     },
 }
 
@@ -138,6 +154,12 @@ fn main() -> ExitCode {
             }),
             Err(code) => code,
         },
+        Command::Migration {
+            command: MigrationCommand::Begin { file },
+        } => match load_file_with_source(&file) {
+            Ok((types, src)) => handle_io_result(migrations::begin(&types, &src, &file)),
+            Err(code) => code,
+        },
         Command::Rust {
             command:
                 RustCommand::Types {
@@ -198,6 +220,10 @@ fn handle_io_result(result: io::Result<()>) -> ExitCode {
 
 /// Loads and parses the file, printing any errors
 fn load_file(file: &Path) -> Result<TypeSet<BasicMetadata>, ExitCode> {
+    load_file_with_source(file).map(|(types, _)| types)
+}
+
+fn load_file_with_source(file: &Path) -> Result<(TypeSet<BasicMetadata>, String), ExitCode> {
     let filename = file.to_string_lossy();
     let src = fs::read_to_string(file)
         .inspect_err(print_error)
@@ -229,7 +255,7 @@ fn load_file(file: &Path) -> Result<TypeSet<BasicMetadata>, ExitCode> {
     if let Some(ast) = ast
         && !reports.has_fatal()
     {
-        Ok(ast)
+        Ok((ast, src))
     } else {
         Err(ExitCode::from(exit_codes::MALFORMED_FILE))
     }
