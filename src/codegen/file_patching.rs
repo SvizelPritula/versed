@@ -69,7 +69,7 @@ pub fn apply_add_edits<W: Write>(file: &mut W, src: &str, mut edits: Vec<AddEdit
             file.write_all(edit.content.as_bytes())?;
         }
 
-        file.write(&[byte])?;
+        file.write_all(&[byte])?;
     }
 
     Ok(())
