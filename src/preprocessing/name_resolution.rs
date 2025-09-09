@@ -93,7 +93,9 @@ fn resolve_type<'filename>(
     filename: &'filename str,
     reports: &mut Reports<'filename>,
 ) -> Type<BasicMetadata> {
-    let r#type = match r#type.r#type {
+    let Type { r#type, metadata } = r#type;
+
+    let r#type = match r#type {
         TypeType::Struct(Struct { fields, metadata }) => {
             check_unique(
                 fields
@@ -206,7 +208,13 @@ fn resolve_type<'filename>(
         }
     };
 
-    Type { r#type }
+    Type {
+        r#type,
+        metadata: BasicInfo {
+            resolution: (),
+            span: metadata,
+        },
+    }
 }
 
 fn check_unique<'a, 'filename>(
@@ -237,14 +245,16 @@ fn check_unique<'a, 'filename>(
 #[derive(Debug, Clone, Copy)]
 pub struct ResolutionMetadata;
 impl Metadata for ResolutionMetadata {
+    type Type = ();
+    type TypeSet = ();
+    type Named = ();
+
     type Struct = ();
     type Enum = ();
     type List = ();
     type Primitive = ();
     type Identifier = usize;
 
-    type TypeSet = ();
-    type Named = ();
     type Field = ();
     type Variant = ();
 }

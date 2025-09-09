@@ -156,6 +156,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
                 .then(punct(Punct::Colon).ignore_then(r#type.clone()).or(
                     punct(Punct::Colon).not().to(Type {
                         r#type: TypeType::Primitive(UNIT),
+                        metadata: (),
                     }),
                 ))
                 .map(move |((ident, span), r#type)| map_field(ident, r#type, span));
@@ -223,7 +224,10 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
         );
 
         let real_type =
-            choice((list, r#struct, r#enum, primitive, identifier)).map(|r#type| Type { r#type });
+            choice((list, r#struct, r#enum, primitive, identifier)).map(|r#type| Type {
+                r#type,
+                metadata: (),
+            });
 
         choice((parens, real_type))
     });
@@ -236,6 +240,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
             punct(Punct::Semicolon).rewind().ignored().or(end()),
             || Type {
                 r#type: TypeType::Primitive(UNIT),
+                metadata: (),
             },
         )))
         .then_ignore(

@@ -100,8 +100,8 @@ where
         }
     }
 
-    fn name_type(&mut self, r#type: Type<A>) -> Type<B> {
-        let r#type = match r#type.r#type {
+    fn name_type(&mut self, r#type: TypeType<A>) -> TypeType<B> {
+        match r#type {
             TypeType::Struct(r#struct) => TypeType::Struct(self.name_struct(r#struct)),
             TypeType::Enum(r#enum) => TypeType::Enum(self.name_enum(r#enum)),
             TypeType::List(list) => TypeType::List(self.name_list(list)),
@@ -109,20 +109,27 @@ where
             TypeType::Identifier(identifier) => {
                 TypeType::Identifier(self.name_identifier(identifier))
             }
-        };
-
-        Type { r#type }
+        }
     }
 
     fn push_and_name_type(&mut self, r#type: Type<A>, name: String) -> (Type<B>, String) {
         self.type_name_stack.push(name);
+
+        let Type { r#type, metadata } = r#type;
+        let name = self.current_type_name();
+
         let r#type = self.name_type(r#type);
+
+        let r#type = Type {
+            r#type,
+            metadata: self.map.map_type(metadata, name),
+        };
+
         let name = self.type_name_stack.pop().unwrap();
         (r#type, name)
     }
 
     fn name_struct(&mut self, Struct { fields, metadata }: Struct<A>) -> Struct<B> {
-        let name = self.current_type_name();
         let mut new_fields = Vec::with_capacity(fields.len());
         let mut used_names = HashSet::new();
 
@@ -149,12 +156,11 @@ where
 
         Struct {
             fields: new_fields,
-            metadata: self.map.map_struct(metadata, name),
+            metadata: self.map.map_struct(metadata, ()),
         }
     }
 
     fn name_enum(&mut self, Enum { variants, metadata }: Enum<A>) -> Enum<B> {
-        let name = self.current_type_name();
         let mut new_variants = Vec::with_capacity(variants.len());
         let mut used_names = HashSet::new();
 
@@ -181,37 +187,32 @@ where
 
         Enum {
             variants: new_variants,
-            metadata: self.map.map_enum(metadata, name),
+            metadata: self.map.map_enum(metadata, ()),
         }
     }
 
     const LIST_ELEMENT_NAME: &str = "element";
 
     fn name_list(&mut self, List { r#type, metadata }: List<A>) -> List<B> {
-        let name = self.current_type_name();
         let (r#type, _) = self.push_and_name_type(*r#type, Self::LIST_ELEMENT_NAME.to_owned());
 
         List {
             r#type: Box::new(r#type),
-            metadata: self.map.map_list(metadata, name),
+            metadata: self.map.map_list(metadata, ()),
         }
     }
 
     fn name_primitive(&mut self, Primitive { r#type, metadata }: Primitive<A>) -> Primitive<B> {
-        let name = self.current_type_name();
-
         Primitive {
             r#type,
-            metadata: self.map.map_primitive(metadata, name),
+            metadata: self.map.map_primitive(metadata, ()),
         }
     }
 
     fn name_identifier(&mut self, Identifier { ident, metadata }: Identifier<A>) -> Identifier<B> {
-        let name = self.current_type_name();
-
         Identifier {
             ident,
-            metadata: self.map.map_identifier(metadata, name),
+            metadata: self.map.map_identifier(metadata, ()),
         }
     }
 
@@ -232,14 +233,16 @@ where
 pub struct NameMetadata;
 
 impl Metadata for NameMetadata {
-    type Struct = String;
-    type Enum = String;
-    type List = String;
-    type Primitive = String;
-    type Identifier = String;
-
+    type Type = String;
     type TypeSet = String;
     type Named = ();
+
+    type Struct = ();
+    type Enum = ();
+    type List = ();
+    type Primitive = ();
+    type Identifier = ();
+
     type Field = String;
     type Variant = String;
 }

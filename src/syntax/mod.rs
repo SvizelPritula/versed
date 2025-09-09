@@ -62,14 +62,16 @@ pub struct IdentSpan {
 #[derive(Debug, Clone, Copy)]
 pub struct SpanMetadata;
 impl Metadata for SpanMetadata {
+    type Type = ();
+    type TypeSet = ();
+    type Named = IdentSpan;
+
     type Struct = ();
     type Enum = ();
     type List = ();
     type Primitive = ();
     type Identifier = IdentSpan;
 
-    type TypeSet = ();
-    type Named = IdentSpan;
     type Field = IdentSpan;
     type Variant = IdentSpan;
 }

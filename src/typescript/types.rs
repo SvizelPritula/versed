@@ -12,7 +12,7 @@ pub fn emit_types(
 ) -> Result<()> {
     for (index, r#type) in types.types.iter().enumerate() {
         writer.write("export type ")?;
-        writer.write(type_name(&r#type.r#type))?;
+        writer.write(&r#type.r#type.metadata.name)?;
         writer.write(" = ")?;
 
         if is_anomalously_recursive(&r#type.r#type, index) {
@@ -98,21 +98,11 @@ fn emit_type(
         }
         TypeType::Identifier(identifier) => {
             let r#type = &types.types[identifier.metadata.resolution].r#type;
-            writer.write(type_name(r#type))?;
+            writer.write(&r#type.metadata.name)?;
         }
     }
 
     Ok(())
-}
-
-fn type_name(r#type: &Type<TypeScriptMetadata>) -> &str {
-    match &r#type.r#type {
-        TypeType::Struct(r#struct) => &r#struct.metadata.name,
-        TypeType::Enum(r#enum) => &r#enum.metadata.name,
-        TypeType::List(list) => &list.metadata.name,
-        TypeType::Primitive(primitive) => &primitive.metadata.name,
-        TypeType::Identifier(identifier) => &identifier.metadata.name,
-    }
 }
 
 fn is_anomalously_recursive(r#type: &Type<TypeScriptMetadata>, index: usize) -> bool {

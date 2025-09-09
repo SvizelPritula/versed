@@ -34,7 +34,7 @@ pub fn emit_types(
     let mut used_type_names = HashSet::new();
 
     for r#type in &types.types {
-        used_type_names.insert(type_name(&r#type.r#type));
+        used_type_names.insert(r#type.r#type.metadata.name.as_str());
         add_all_rust_type_names(&r#type.r#type, &mut used_type_names);
     }
 
@@ -70,14 +70,14 @@ fn emit_type_recursive(
 ) -> Result<()> {
     match &r#type.r#type {
         TypeType::Struct(r#struct) => {
-            emit_struct(writer, context, r#struct)?;
+            emit_struct(writer, context, r#struct, &r#type.metadata.name)?;
 
             for field in &r#struct.fields {
                 emit_type_recursive(writer, context, &field.r#type)?;
             }
         }
         TypeType::Enum(r#enum) => {
-            emit_enum(writer, context, r#enum)?;
+            emit_enum(writer, context, r#enum, &r#type.metadata.name)?;
 
             for variant in &r#enum.variants {
                 emit_type_recursive(writer, context, &variant.r#type)?;
@@ -95,10 +95,11 @@ fn emit_struct(
     writer: &mut SourceWriter<impl Write>,
     context: Context,
     r#struct: &Struct<RustMetadata>,
+    name: &str,
 ) -> Result<()> {
     write_derive(writer, context)?;
     writer.write("pub struct ")?;
-    writer.write(&r#struct.metadata.name)?;
+    writer.write(name)?;
     writer.write_nl(" {")?;
     writer.indent();
 
@@ -127,6 +128,7 @@ fn emit_enum(
     writer: &mut SourceWriter<impl Write>,
     context: Context,
     r#enum: &Enum<RustMetadata>,
+    name: &str,
 ) -> Result<()> {
     write_derive(writer, context)?;
     if context.options.serde {
@@ -134,7 +136,7 @@ fn emit_enum(
     }
 
     writer.write("pub enum ")?;
-    writer.write(&r#enum.metadata.name)?;
+    writer.write(name)?;
     writer.write_nl(" {")?;
     writer.indent();
 
@@ -170,13 +172,13 @@ fn emit_type_alias(
         }
 
         writer.write("pub struct ")?;
-        writer.write(type_name(&r#type.r#type))?;
+        writer.write(&r#type.r#type.metadata.name)?;
         writer.write("(pub ")?;
         write_type_name(writer, context, &r#type.r#type, r#type.metadata.r#box)?;
         writer.write_nl(");")?;
     } else {
         writer.write("pub type ")?;
-        writer.write(type_name(&r#type.r#type))?;
+        writer.write(&r#type.r#type.metadata.name)?;
         writer.write(" = ")?;
         write_type_name(writer, context, &r#type.r#type, r#type.metadata.r#box)?;
         writer.write_nl(";")?;
@@ -197,8 +199,7 @@ fn write_type_name(
     }
 
     match &r#type.r#type {
-        TypeType::Struct(r#struct) => writer.write(&r#struct.metadata.name)?,
-        TypeType::Enum(r#enum) => writer.write(&r#enum.metadata.name)?,
+        TypeType::Struct(_) | TypeType::Enum(_) => writer.write(&r#type.metadata.name)?,
         TypeType::List(list) => {
             writer.write(context.rust_type("Vec", "::std::vec::Vec"))?;
             writer.write("<")?;
@@ -212,9 +213,12 @@ fn write_type_name(
                 PrimitiveType::Unit => "()",
             })?;
         }
-        TypeType::Identifier(identifier) => writer.write(type_name(
-            &context.types.types[identifier.metadata.resolution].r#type,
-        ))?,
+        TypeType::Identifier(identifier) => writer.write(
+            &context.types.types[identifier.metadata.resolution]
+                .r#type
+                .metadata
+                .name,
+        )?,
     }
 
     if r#box {
@@ -244,27 +248,17 @@ fn needs_type_alias(r#type: &Type<RustMetadata>) -> bool {
     !matches!(r#type.r#type, TypeType::Struct(_) | TypeType::Enum(_))
 }
 
-fn type_name(r#type: &Type<RustMetadata>) -> &str {
-    match &r#type.r#type {
-        TypeType::Struct(r#struct) => &r#struct.metadata.name,
-        TypeType::Enum(r#enum) => &r#enum.metadata.name,
-        TypeType::List(list) => &list.metadata.name,
-        TypeType::Primitive(primitive) => &primitive.metadata.name,
-        TypeType::Identifier(identifier) => &identifier.metadata.name,
-    }
-}
-
 fn add_all_rust_type_names<'a>(r#type: &'a Type<RustMetadata>, set: &mut HashSet<&'a str>) {
     match &r#type.r#type {
         TypeType::Struct(r#struct) => {
-            set.insert(&r#struct.metadata.name);
+            set.insert(&r#type.metadata.name);
 
             for field in &r#struct.fields {
                 add_all_rust_type_names(&field.r#type, set);
             }
         }
         TypeType::Enum(r#enum) => {
-            set.insert(&r#enum.metadata.name);
+            set.insert(&r#type.metadata.name);
 
             for variant in &r#enum.variants {
                 add_all_rust_type_names(&variant.r#type, set);

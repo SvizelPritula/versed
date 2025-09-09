@@ -125,14 +125,16 @@ fn has_type_reference_through_alias(
 pub struct BoxMetadata;
 
 impl Metadata for BoxMetadata {
+    type Type = ();
+    type TypeSet = ();
+    type Named = bool;
+
     type Struct = ();
     type Enum = ();
     type List = ();
     type Primitive = ();
     type Identifier = ();
 
-    type TypeSet = ();
-    type Named = bool;
     type Field = bool;
     type Variant = bool;
 }
@@ -141,14 +143,16 @@ impl Metadata for BoxMetadata {
 pub struct NewtypeMetadata;
 
 impl Metadata for NewtypeMetadata {
+    type Type = ();
+    type TypeSet = ();
+    type Named = bool;
+
     type Struct = ();
     type Enum = ();
     type List = ();
     type Primitive = ();
     type Identifier = ();
 
-    type TypeSet = ();
-    type Named = bool;
     type Field = ();
     type Variant = ();
 }
