@@ -185,7 +185,10 @@ fn resolve_type<'filename>(
                 span: metadata,
             },
         }),
-        TypeType::Identifier(Identifier { ident, metadata }) => {
+        TypeType::Identifier(Identifier {
+            ident,
+            metadata: span_metadata,
+        }) => {
             let index = if let Some(&NameInfo { index, .. }) = names.get(&ident) {
                 index
             } else {
@@ -202,7 +205,7 @@ fn resolve_type<'filename>(
                 ident,
                 metadata: BasicInfo {
                     resolution: index,
-                    span: metadata,
+                    span: span_metadata,
                 },
             })
         }
