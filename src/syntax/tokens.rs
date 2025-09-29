@@ -4,6 +4,7 @@ use std::fmt::{self, Display, Formatter, Write};
 pub enum Token {
     Ident(String),
     QuotedIdent(String),
+    Number(String),
 
     GroupLeft(Group),
     GroupRight(Group),
@@ -25,6 +26,7 @@ pub enum Punct {
     Colon,
     Comma,
     Semicolon,
+    Pound,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -41,6 +43,7 @@ impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Token::Ident(ident) | Token::QuotedIdent(ident) => f.write_str(ident),
+            Token::Number(ident) => f.write_str(ident),
             Token::GroupLeft(Group::Paren) => f.write_char('('),
             Token::GroupLeft(Group::Bracket) => f.write_char('['),
             Token::GroupLeft(Group::Brace) => f.write_char('{'),
@@ -51,6 +54,7 @@ impl Display for Token {
             Token::Punct(Punct::Colon) => f.write_char(':'),
             Token::Punct(Punct::Comma) => f.write_char(','),
             Token::Punct(Punct::Semicolon) => f.write_char(';'),
+            Token::Punct(Punct::Pound) => f.write_char('#'),
             Token::Keyword(Keyword::Version) => f.write_str("version"),
             Token::Keyword(Keyword::Struct) => f.write_str("struct"),
             Token::Keyword(Keyword::Enum) => f.write_str("enum"),

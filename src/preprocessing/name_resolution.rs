@@ -93,7 +93,11 @@ fn resolve_type<'filename>(
     filename: &'filename str,
     reports: &mut Reports<'filename>,
 ) -> Type<BasicMetadata> {
-    let Type { r#type, metadata } = r#type;
+    let Type {
+        r#type,
+        number,
+        metadata,
+    } = r#type;
 
     let r#type = match r#type {
         TypeType::Struct(Struct { fields, metadata }) => {
@@ -213,6 +217,7 @@ fn resolve_type<'filename>(
 
     Type {
         r#type,
+        number,
         metadata: BasicInfo {
             resolution: (),
             span: metadata,

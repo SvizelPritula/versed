@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, str::FromStr};
 
 use chumsky::{
     ConfigParser, IterParser, Parser,
@@ -48,6 +48,25 @@ fn ident<'tokens, I: Input<'tokens>>() -> Parser![String] {
     }
     .map(normalize)
     .labelled("identifier")
+}
+
+fn number<'tokens, I: Input<'tokens>>() -> Parser![Option<u64>] {
+    select! {
+        Token::Number(string) => string,
+    }
+    .validate(|digits, e, emitter| match u64::from_str(&digits) {
+        Ok(n) => Some(n),
+        Err(_) => {
+            // The only possible error kind should be PosOverflow
+            emitter.emit(Rich::custom(
+                e.span(),
+                format!("type numbers must be smaller than {}", u64::MAX),
+            ));
+
+            None
+        }
+    })
+    .labelled("number")
 }
 
 fn keyword<'tokens, I: Input<'tokens>>(keyword: Keyword) -> Parser![Token] {
@@ -156,6 +175,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
                 .then(punct(Punct::Colon).ignore_then(r#type.clone()).or(
                     punct(Punct::Colon).not().map_with(|(), e| Type {
                         r#type: TypeType::Primitive(UNIT),
+                        number: None,
                         metadata: IdentSpan { span: e.span() },
                     }),
                 ))
@@ -223,9 +243,16 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
             r#type.clone(),
         );
 
-        let real_type =
-            choice((list, r#struct, r#enum, primitive, identifier)).map_with(|r#type, e| Type {
+        let type_number =
+            punct(Punct::Pound).ignore_then(number().recover_with(via_parser(empty().to(None))));
+
+        let real_type = type_number
+            .or_not()
+            .map(Option::flatten)
+            .then(choice((list, r#struct, r#enum, primitive, identifier)))
+            .map_with(|(number, r#type), e| Type {
                 r#type,
+                number,
                 metadata: IdentSpan { span: e.span() },
             });
 
@@ -240,6 +267,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
             punct(Punct::Semicolon).rewind().ignored().or(end()),
             || Type {
                 r#type: TypeType::Primitive(UNIT),
+                number: None,
                 metadata: IdentSpan {
                     span: Span::from(0..0),
                 },

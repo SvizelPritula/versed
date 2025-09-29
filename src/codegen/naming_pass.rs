@@ -115,13 +115,18 @@ where
     fn push_and_name_type(&mut self, r#type: Type<A>, name: String) -> (Type<B>, String) {
         self.type_name_stack.push(name);
 
-        let Type { r#type, metadata } = r#type;
+        let Type {
+            r#type,
+            number,
+            metadata,
+        } = r#type;
         let name = self.current_type_name();
 
         let r#type = self.name_type(r#type);
 
         let r#type = Type {
             r#type,
+            number,
             metadata: self.map.map_type(metadata, name),
         };
 

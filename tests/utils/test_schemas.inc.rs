@@ -65,7 +65,8 @@ fn r#enum() {
         Color = enum {
             red: int,
             green: string,
-            blue: unit
+            blue: unit,
+            yellow
         };
     "});
 }

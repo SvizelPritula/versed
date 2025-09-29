@@ -40,7 +40,7 @@ pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<Spanned<Token>>, extra:
             } else {
                 emitter.emit(Rich::custom(
                     e.span(),
-                    format!("there is no unicode character with code 0x{code:x}",),
+                    format!("there is no unicode character with code 0x{code:x}"),
                 ));
 
                 REPLACEMENT_CHARACTER
@@ -92,11 +92,17 @@ pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<Spanned<Token>>, extra:
                 .recover_with(via_parser(none_of("\r\n").repeated())),
         );
 
+    let number = digits(10)
+        .at_least(1)
+        .to_slice()
+        .map(|n: &str| Token::Number(n.to_owned()));
+
     let punct_or_group = choice([
         just('=').to(Token::Punct(Punct::Equals)),
         just(':').to(Token::Punct(Punct::Colon)),
         just(',').to(Token::Punct(Punct::Comma)),
         just(';').to(Token::Punct(Punct::Semicolon)),
+        just('#').to(Token::Punct(Punct::Pound)),
         just('(').to(Token::GroupLeft(Group::Paren)),
         just(')').to(Token::GroupRight(Group::Paren)),
         just('[').to(Token::GroupLeft(Group::Bracket)),
@@ -105,7 +111,7 @@ pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<Spanned<Token>>, extra:
         just('}').to(Token::GroupRight(Group::Brace)),
     ]);
 
-    let token = choice((ident_like, quoted_ident, punct_or_group));
+    let token = choice((ident_like, quoted_ident, number, punct_or_group));
 
     let comment = just("//").ignore_then(none_of("\r\n").repeated());
 

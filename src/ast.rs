@@ -3,6 +3,7 @@ use crate::metadata::Metadata;
 #[derive(Debug, Clone)]
 pub struct Type<M: Metadata> {
     pub r#type: TypeType<M>,
+    pub number: Option<u64>,
     pub metadata: M::Type,
 }
 
