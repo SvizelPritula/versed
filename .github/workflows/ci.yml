@@ -11,7 +11,7 @@ jobs:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --no-fail-fast
 
@@ -19,14 +19,18 @@ jobs:
     name: Clippy lints
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
       - run: cargo clippy -- --deny warnings
 
   format:
     name: Formatting
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
       - run: cargo fmt --check
