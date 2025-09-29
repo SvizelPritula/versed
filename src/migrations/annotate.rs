@@ -2,6 +2,7 @@ use crate::{
     ast::{Type, TypeSet, TypeType},
     codegen::file_patching::AddEdit,
     preprocessing::BasicMetadata,
+    syntax::Span,
 };
 
 pub fn annotate(types: &TypeSet<BasicMetadata>) -> Vec<AddEdit> {
@@ -18,7 +19,11 @@ fn annotate_type(r#type: &Type<BasicMetadata>, edits: &mut Vec<AddEdit>) {
     let num = edits.len() + 1;
     edits.push(AddEdit::new(
         r#type.metadata.span.span.start,
-        format!("#{num} "),
+        if is_span_empty(r#type.metadata.span.span) {
+            format!(" #{num}")
+        } else {
+            format!("#{num} ")
+        },
     ));
 
     match &r#type.r#type {
@@ -36,4 +41,8 @@ fn annotate_type(r#type: &Type<BasicMetadata>, edits: &mut Vec<AddEdit>) {
         TypeType::Primitive(_) => {}
         TypeType::Identifier(_) => {}
     }
+}
+
+fn is_span_empty(span: Span) -> bool {
+    span.start == span.end
 }

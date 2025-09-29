@@ -82,6 +82,13 @@ fn right<'tokens, I: Input<'tokens>>(group: Group) -> Parser![Token] {
     just(Token::GroupRight(group))
 }
 
+fn type_number<'tokens, I: Input<'tokens>>() -> Parser![Option<u64>] {
+    punct(Punct::Pound)
+        .ignore_then(number().recover_with(via_parser(empty().to(None))))
+        .or_not()
+        .map(Option::flatten)
+}
+
 /// Matches any token or a bracketed expression (without semicolons),
 /// but doesn't allow for semicolons, as those cannot appear within types
 /// and are used to synchronize broken named types.
@@ -172,13 +179,18 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
         ) -> Parser![T] {
             let field = ident()
                 .map_with(|ident, e| (ident, e.span()))
-                .then(punct(Punct::Colon).ignore_then(r#type.clone()).or(
-                    punct(Punct::Colon).not().map_with(|(), e| Type {
-                        r#type: TypeType::Primitive(UNIT),
-                        number: None,
-                        metadata: IdentSpan { span: e.span() },
-                    }),
-                ))
+                .then(
+                    punct(Punct::Colon)
+                        .ignore_then(r#type.clone())
+                        .or(punct(Punct::Colon)
+                            .not()
+                            .ignore_then(type_number())
+                            .map_with(|number, e| Type {
+                                r#type: TypeType::Primitive(UNIT),
+                                number,
+                                metadata: IdentSpan { span: e.span() },
+                            })),
+                )
                 .map(move |((ident, span), r#type)| map_field(ident, r#type, span));
 
             let skip_to_comma = skip_until(
@@ -243,12 +255,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
             r#type.clone(),
         );
 
-        let type_number =
-            punct(Punct::Pound).ignore_then(number().recover_with(via_parser(empty().to(None))));
-
-        let real_type = type_number
-            .or_not()
-            .map(Option::flatten)
+        let real_type = type_number()
             .then(choice((list, r#struct, r#enum, primitive, identifier)))
             .map_with(|(number, r#type), e| Type {
                 r#type,
