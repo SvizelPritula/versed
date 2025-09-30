@@ -85,6 +85,15 @@ enum MigrationCommand {
         #[arg(value_hint = ValueHint::FilePath)]
         file: PathBuf,
     },
+    /// Finish a new migration, comparing the new and old schema to produce a migration file
+    Finish {
+        /// The path to the schema file
+        #[arg(value_hint = ValueHint::FilePath)]
+        file: PathBuf,
+        /// The path to the migration file to output
+        #[arg(value_hint = ValueHint::FilePath)]
+        migration: PathBuf,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -160,6 +169,41 @@ fn main() -> ExitCode {
             Ok((types, src)) => handle_io_result(migrations::begin(&types, &src, &file)),
             Err(code) => code,
         },
+        Command::Migration {
+            command:
+                MigrationCommand::Finish {
+                    file: new_file,
+                    migration: migration_file,
+                },
+        } => {
+            let old_file = migrations::old_schema_path(&new_file);
+
+            let (new_types, new_src) = match load_file_with_source(&new_file) {
+                Ok(res) => res,
+                Err(code) => return code,
+            };
+            let (old_types, old_src) = match load_file_with_source(&old_file) {
+                Ok(res) => res,
+                Err(code) => return code,
+            };
+
+            let filename = new_file.to_string_lossy();
+            let reports = migrations::check_versions(&new_types, &old_types, &filename);
+
+            match print_all_reports(&reports, &filename, &new_src) {
+                Ok(()) => {}
+                Err(code) => return code,
+            };
+
+            handle_io_result(migrations::finish(
+                &new_types,
+                &new_src,
+                &old_src,
+                &new_file,
+                &old_file,
+                &migration_file,
+            ))
+        }
         Command::Rust {
             command:
                 RustCommand::Types {
@@ -239,18 +283,7 @@ fn load_file_with_source(file: &Path) -> Result<(TypeSet<BasicMetadata>, String)
         None
     };
 
-    if reports.has_any() {
-        let mut stream = BufWriter::new(stderr().lock());
-        let mut cache = (filename.as_ref(), Source::from(src.as_str()));
-
-        for report in &reports {
-            report
-                .write(&mut cache, &mut stream)
-                // If writing the report failed, then printing the error will probably fail too, but might as well try
-                .inspect_err(print_error)
-                .map_err(|_| ExitCode::from(exit_codes::IO))?;
-        }
-    }
+    print_all_reports(&reports, &filename, &src)?;
 
     if let Some(ast) = ast
         && !reports.has_fatal()
@@ -259,4 +292,25 @@ fn load_file_with_source(file: &Path) -> Result<(TypeSet<BasicMetadata>, String)
     } else {
         Err(ExitCode::from(exit_codes::MALFORMED_FILE))
     }
+}
+
+fn print_all_reports<'filename>(
+    reports: &Reports<'filename>,
+    filename: &str,
+    src: &str,
+) -> Result<(), ExitCode> {
+    if reports.has_any() {
+        let mut stream = BufWriter::new(stderr().lock());
+        let mut cache = (filename, Source::from(src));
+
+        for report in reports {
+            report
+                .write(&mut cache, &mut stream)
+                // If writing the report failed, then printing the error will probably fail too, but might as well try
+                .inspect_err(print_error)
+                .map_err(|_| ExitCode::from(exit_codes::IO))?;
+        }
+    }
+
+    Ok(())
 }

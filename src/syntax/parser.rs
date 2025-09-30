@@ -16,7 +16,7 @@ use crate::{
         TypeType, Variant,
     },
     syntax::{
-        ExtendVec, IdentSpan, Span, SpanMetadata,
+        ExtendVec, SpanInfo, Span, SpanMetadata,
         tokens::{Group, Keyword, Punct, Token},
     },
 };
@@ -188,7 +188,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
                             .map_with(|number, e| Type {
                                 r#type: TypeType::Primitive(UNIT),
                                 number,
-                                metadata: IdentSpan { span: e.span() },
+                                metadata: SpanInfo { span: e.span() },
                             })),
                 )
                 .map(move |((ident, span), r#type)| map_field(ident, r#type, span));
@@ -228,7 +228,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
             |name, r#type, span| Field {
                 name,
                 r#type,
-                metadata: IdentSpan { span },
+                metadata: SpanInfo { span },
             },
             |fields| {
                 TypeType::Struct(Struct {
@@ -244,7 +244,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
             |name, r#type, span| Variant {
                 name,
                 r#type,
-                metadata: IdentSpan { span },
+                metadata: SpanInfo { span },
             },
             |variants| {
                 TypeType::Enum(Enum {
@@ -260,7 +260,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
             .map_with(|(number, r#type), e| Type {
                 r#type,
                 number,
-                metadata: IdentSpan { span: e.span() },
+                metadata: SpanInfo { span: e.span() },
             });
 
         choice((parens, real_type))
@@ -275,7 +275,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
             || Type {
                 r#type: TypeType::Primitive(UNIT),
                 number: None,
-                metadata: IdentSpan {
+                metadata: SpanInfo {
                     span: Span::from(0..0),
                 },
             },
@@ -288,7 +288,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
         .map(|((name, span), r#type)| NamedType {
             name,
             r#type,
-            metadata: IdentSpan { span },
+            metadata: SpanInfo { span },
         });
 
     let types = named_type
