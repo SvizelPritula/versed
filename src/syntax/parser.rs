@@ -16,7 +16,7 @@ use crate::{
         TypeType, Variant,
     },
     syntax::{
-        ExtendVec, SpanInfo, Span, SpanMetadata,
+        ExtendVec, Span, SpanInfo, SpanMetadata,
         tokens::{Group, Keyword, Punct, Token},
     },
 };
