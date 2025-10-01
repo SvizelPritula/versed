@@ -183,17 +183,22 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
         ) -> Parser![T] {
             let field = ident()
                 .map_with(|ident, e| (ident, e.span()))
-                .then(
+                .then_with_ctx(
                     punct(Punct::Colon)
                         .ignore_then(r#type.clone())
+                        .with_ctx(())
                         .or(punct(Punct::Colon)
                             .not()
                             .ignore_then(type_number())
+                            .with_ctx(())
                             .map_with(|number, e| Type {
                                 r#type: TypeType::Primitive(UNIT),
                                 number: number.map(|(number, _)| number),
                                 metadata: TypeSpanInfo {
-                                    r#type: e.span(),
+                                    r#type: {
+                                        let (_, Span { end, .. }) = e.ctx();
+                                        Span::from(*end..*end)
+                                    },
                                     number: number.map(|(_, span)| span),
                                 },
                             })),
@@ -263,12 +268,15 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
         );
 
         let real_type = type_number()
-            .then(choice((list, r#struct, r#enum, primitive, identifier)))
-            .map_with(|(number, r#type), e| Type {
+            .then(
+                choice((list, r#struct, r#enum, primitive, identifier))
+                    .map_with(|r#type, e| (r#type, e.span())),
+            )
+            .map(|(number, (r#type, span))| Type {
                 r#type,
                 number: number.map(|(number, _)| number),
                 metadata: TypeSpanInfo {
-                    r#type: e.span(),
+                    r#type: span,
                     number: number.map(|(_, span)| span),
                 },
             });
