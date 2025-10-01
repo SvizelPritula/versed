@@ -26,3 +26,27 @@ fn check(schema: &str) {
 }
 
 include!("utils/test_schemas.inc.rs");
+
+#[test]
+fn pre_annotated() {
+    check(indoc! {"
+        version v1;
+
+        Result = #1 enum {
+            error: #2 string,
+            ok #3
+        };
+    "});
+}
+
+#[test]
+fn partially_annotated() {
+    check(indoc! {"
+        version v1;
+
+        Result = enum {
+            error: #1 string,
+            ok
+        };
+    "});
+}

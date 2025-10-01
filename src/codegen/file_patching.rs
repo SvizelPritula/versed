@@ -50,6 +50,7 @@ pub fn add_line_to_file(path: &Path, content: fmt::Arguments) -> Result<()> {
     Ok(())
 }
 
+#[derive(Debug)]
 pub struct AddEdit {
     index: usize,
     content: String,
