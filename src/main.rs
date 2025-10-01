@@ -285,9 +285,7 @@ fn load_file_with_source(file: &Path) -> Result<(TypeSet<BasicMetadata>, String)
 
     print_all_reports(&reports, &filename, &src)?;
 
-    if let Some(ast) = ast
-        && !reports.has_fatal()
-    {
+    if let Some(ast) = ast {
         Ok((ast, src))
     } else {
         Err(ExitCode::from(exit_codes::MALFORMED_FILE))
@@ -312,5 +310,9 @@ fn print_all_reports<'filename>(
         }
     }
 
-    Ok(())
+    if !reports.has_fatal() {
+        Ok(())
+    } else {
+        Err(ExitCode::from(exit_codes::MALFORMED_FILE))
+    }
 }
