@@ -45,7 +45,7 @@ pub fn resolve_names<'filename>(
             Entry::Occupied(entry) => reports.add_fatal(make_double_label_report(
                 format!("the name '{name}' was declared multiple times"),
                 format!("the name '{name}' was used again here"),
-                r#type.metadata.span,
+                r#type.metadata.name,
                 format!("the name '{name}' was first used here"),
                 entry.get().span,
                 filename,
@@ -53,7 +53,7 @@ pub fn resolve_names<'filename>(
             Entry::Vacant(entry) => {
                 entry.insert(NameInfo {
                     index,
-                    span: r#type.metadata.span,
+                    span: r#type.metadata.name,
                 });
             }
         };
@@ -104,7 +104,7 @@ fn resolve_type<'filename>(
             check_unique(
                 fields
                     .iter()
-                    .map(|Field { name, metadata, .. }| (name.as_str(), metadata.span)),
+                    .map(|Field { name, metadata, .. }| (name.as_str(), metadata.name)),
                 "field",
                 filename,
                 reports,
@@ -140,7 +140,7 @@ fn resolve_type<'filename>(
             check_unique(
                 variants
                     .iter()
-                    .map(|Variant { name, metadata, .. }| (name.as_str(), metadata.span)),
+                    .map(|Variant { name, metadata, .. }| (name.as_str(), metadata.name)),
                 "variant",
                 filename,
                 reports,
@@ -198,7 +198,7 @@ fn resolve_type<'filename>(
             } else {
                 reports.add_fatal(make_simple_report(
                     format!("unknown type '{ident}'"),
-                    metadata.span,
+                    metadata.r#type,
                     filename,
                 ));
 

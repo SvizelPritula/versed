@@ -40,7 +40,7 @@ pub fn check_recursion<'filename>(
                     "the type '{name}' will unavoidably have infinite depth",
                     name = r#type.name
                 ),
-                r#type.metadata.span.span,
+                r#type.metadata.span.name,
                 filename,
             ));
         }

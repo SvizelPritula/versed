@@ -16,7 +16,7 @@ use crate::{
         TypeType, Variant,
     },
     syntax::{
-        ExtendVec, Span, SpanInfo, SpanMetadata,
+        ExtendVec, MemberSpanInfo, Span, SpanMetadata, TypeSetSpanInfo, TypeSpanInfo,
         tokens::{Group, Keyword, Punct, Token},
     },
 };
@@ -82,11 +82,12 @@ fn right<'tokens, I: Input<'tokens>>(group: Group) -> Parser![Token] {
     just(Token::GroupRight(group))
 }
 
-fn type_number<'tokens, I: Input<'tokens>>() -> Parser![Option<u64>] {
+fn type_number<'tokens, I: Input<'tokens>>() -> Parser![Option<(u64, Span)>] {
     punct(Punct::Pound)
         .ignore_then(number().recover_with(via_parser(empty().to(None))))
         .or_not()
         .map(Option::flatten)
+        .map_with(|n, e| n.map(|n| (n, e.span())))
 }
 
 /// Matches any token or a bracketed expression (without semicolons),
@@ -123,19 +124,22 @@ const UNIT: Primitive<SpanMetadata> = Primitive {
 };
 
 pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
+    let to_default_version = |()| (String::new(), Span::from(0..0));
+
     let version = keyword(Keyword::Version)
         .ignore_then(
             ident()
-                .recover_with(via_parser(single_or_group().map(|_| "".into())))
-                .recover_with(via_parser(empty().map(|()| "".into())))
+                .map_with(|ident, e| (ident, e.span()))
+                .recover_with(via_parser(single_or_group().map(to_default_version)))
+                .recover_with(via_parser(empty().map(to_default_version)))
                 .then_ignore(
                     punct(Punct::Semicolon)
                         .ignored()
                         .recover_with(via_parser(ident().rewind().to(()))),
                 )
-                .recover_with(via_parser(empty().map(|()| "".into()))),
+                .recover_with(via_parser(empty().map(to_default_version))),
         )
-        .recover_with(via_parser(empty().map(|()| "".into())));
+        .recover_with(via_parser(empty().map(to_default_version)));
 
     let r#type = recursive(|r#type| {
         let parens = r#type
@@ -187,8 +191,11 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
                             .ignore_then(type_number())
                             .map_with(|number, e| Type {
                                 r#type: TypeType::Primitive(UNIT),
-                                number,
-                                metadata: SpanInfo { span: e.span() },
+                                number: number.map(|(number, _)| number),
+                                metadata: TypeSpanInfo {
+                                    r#type: e.span(),
+                                    number: number.map(|(_, span)| span),
+                                },
                             })),
                 )
                 .map(move |((ident, span), r#type)| map_field(ident, r#type, span));
@@ -228,7 +235,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
             |name, r#type, span| Field {
                 name,
                 r#type,
-                metadata: SpanInfo { span },
+                metadata: MemberSpanInfo { name: span },
             },
             |fields| {
                 TypeType::Struct(Struct {
@@ -244,7 +251,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
             |name, r#type, span| Variant {
                 name,
                 r#type,
-                metadata: SpanInfo { span },
+                metadata: MemberSpanInfo { name: span },
             },
             |variants| {
                 TypeType::Enum(Enum {
@@ -259,8 +266,11 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
             .then(choice((list, r#struct, r#enum, primitive, identifier)))
             .map_with(|(number, r#type), e| Type {
                 r#type,
-                number,
-                metadata: SpanInfo { span: e.span() },
+                number: number.map(|(number, _)| number),
+                metadata: TypeSpanInfo {
+                    r#type: e.span(),
+                    number: number.map(|(_, span)| span),
+                },
             });
 
         choice((parens, real_type))
@@ -275,8 +285,9 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
             || Type {
                 r#type: TypeType::Primitive(UNIT),
                 number: None,
-                metadata: SpanInfo {
-                    span: Span::from(0..0),
+                metadata: TypeSpanInfo {
+                    r#type: Span::from(0..0),
+                    number: None,
                 },
             },
         )))
@@ -288,7 +299,7 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
         .map(|((name, span), r#type)| NamedType {
             name,
             r#type,
-            metadata: SpanInfo { span },
+            metadata: MemberSpanInfo { name: span },
         });
 
     let types = named_type
@@ -305,9 +316,13 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
         .collect()
         .map(|ExtendVec(inner)| inner);
 
-    version.then(types).map(|(version, types)| TypeSet {
-        version,
-        types,
-        metadata: (),
-    })
+    version
+        .then(types)
+        .map(|((version, version_span), types)| TypeSet {
+            version,
+            types,
+            metadata: TypeSetSpanInfo {
+                version: version_span,
+            },
+        })
 }

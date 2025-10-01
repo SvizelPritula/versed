@@ -18,8 +18,8 @@ pub fn annotate(types: &TypeSet<BasicMetadata>) -> Vec<AddEdit> {
 fn annotate_type(r#type: &Type<BasicMetadata>, edits: &mut Vec<AddEdit>) {
     let num = edits.len() + 1;
     edits.push(AddEdit::new(
-        r#type.metadata.span.span.start,
-        if is_span_empty(r#type.metadata.span.span) {
+        r#type.metadata.span.r#type.start,
+        if is_span_empty(r#type.metadata.span.r#type) {
             format!(" #{num}")
         } else {
             format!("#{num} ")

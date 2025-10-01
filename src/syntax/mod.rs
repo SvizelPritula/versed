@@ -55,16 +55,27 @@ fn make_report<'src, 'tokens, T: Display>(
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct SpanInfo {
-    pub span: Span,
+pub struct TypeSpanInfo {
+    pub r#type: Span,
+    pub number: Option<Span>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct MemberSpanInfo {
+    pub name: Span,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct TypeSetSpanInfo {
+    pub version: Span,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct SpanMetadata;
 impl Metadata for SpanMetadata {
-    type Type = SpanInfo;
-    type TypeSet = ();
-    type Named = SpanInfo;
+    type Type = TypeSpanInfo;
+    type TypeSet = TypeSetSpanInfo;
+    type Named = MemberSpanInfo;
 
     type Struct = ();
     type Enum = ();
@@ -72,8 +83,8 @@ impl Metadata for SpanMetadata {
     type Primitive = ();
     type Identifier = ();
 
-    type Field = SpanInfo;
-    type Variant = SpanInfo;
+    type Field = MemberSpanInfo;
+    type Variant = MemberSpanInfo;
 }
 
 #[derive(Debug, Clone)]
