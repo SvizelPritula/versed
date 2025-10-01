@@ -5,7 +5,6 @@ use std::{
 };
 
 use ariadne::{Color, Label, Report, ReportKind};
-use chumsky::span::Span as _;
 
 use crate::{
     ast::TypeSet,
@@ -13,7 +12,6 @@ use crate::{
     migrations::annotate::annotate,
     preprocessing::BasicMetadata,
     reports::Reports,
-    syntax::Span,
 };
 
 mod annotate;
@@ -71,17 +69,19 @@ pub fn check_versions<'filename>(
 
     if new.version == old.version {
         let message = "the new schema has the same version as the old schema";
-        let span = Span::new((), 0..0);
 
-        let report = Report::build(ReportKind::Error, (filename, span.into_range()))
-            .with_config(ariadne::Config::new().with_index_type(ariadne::IndexType::Byte))
-            .with_message(message)
-            .with_label(
-                Label::new((filename, span.into_range()))
-                    .with_message(message)
-                    .with_color(Color::Red),
-            )
-            .finish();
+        let report = Report::build(
+            ReportKind::Error,
+            (filename, new.metadata.span.version.into_range()),
+        )
+        .with_config(ariadne::Config::new().with_index_type(ariadne::IndexType::Byte))
+        .with_message(message)
+        .with_label(
+            Label::new((filename, new.metadata.span.version.into_range()))
+                .with_message(message)
+                .with_color(Color::Red),
+        )
+        .finish();
 
         reports.add_fatal(report);
     }
