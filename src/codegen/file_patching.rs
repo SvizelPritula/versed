@@ -1,7 +1,7 @@
 use std::{
     cmp::Reverse,
     fmt,
-    fs::OpenOptions,
+    fs::{File, OpenOptions},
     io::{BufWriter, Read, Result, Seek, SeekFrom, Write},
     path::{Path, PathBuf},
 };
@@ -44,9 +44,32 @@ pub fn add_line_to_file(path: &Path, content: fmt::Arguments) -> Result<()> {
     }
 
     file.write_fmt(content)?;
-    file.write_all("\n".as_bytes())?;
+    file.write_all(b"\n")?;
     file.flush()?;
 
+    Ok(())
+}
+
+fn add_newlines_if_needed(count: usize, content: &str, mut file: impl Write) -> Result<()> {
+    let existing = content.chars().rev().take_while(|c| *c == '\n').count();
+    let count = count.saturating_sub(existing);
+
+    for _ in 0..count {
+        file.write_all(b"\n")?;
+    }
+
+    Ok(())
+}
+
+pub fn concat_files(a: &str, b: &str, path: &Path) -> Result<()> {
+    let mut file = BufWriter::new(File::create(path)?);
+
+    file.write_all(a.as_bytes())?;
+    add_newlines_if_needed(2, a, &mut file)?;
+    file.write_all(b.as_bytes())?;
+    add_newlines_if_needed(1, a, &mut file)?;
+
+    file.flush()?;
     Ok(())
 }
 

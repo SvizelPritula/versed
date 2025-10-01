@@ -8,7 +8,7 @@ use ariadne::{Color, Label, Report, ReportKind};
 
 use crate::{
     ast::TypeSet,
-    codegen::file_patching::{add_extention, apply_add_edits},
+    codegen::file_patching::{add_extention, apply_add_edits, concat_files},
     migrations::annotate::annotate,
     preprocessing::BasicMetadata,
     reports::Reports,
@@ -48,12 +48,7 @@ pub fn finish(
     let _ = new_types;
     let _ = new_path;
 
-    let mut migration_file = BufWriter::new(File::create(migration_path)?);
-
-    migration_file.write_all(old_src.as_bytes())?;
-    migration_file.write_all(new_src.as_bytes())?;
-
-    migration_file.flush()?;
+    concat_files(old_src, new_src, migration_path)?;
 
     fs::remove_file(old_path)?;
 

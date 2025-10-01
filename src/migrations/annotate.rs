@@ -39,7 +39,7 @@ pub fn annotate(types: &TypeSet<BasicMetadata>) -> Vec<AddEdit> {
 fn annotate_type(r#type: &Type<BasicMetadata>, context: &mut AnnotationContext) {
     if r#type.number.is_none() {
         let number = loop {
-            let number = context.next_number + 1;
+            let number = context.next_number;
             context.next_number += 1;
 
             if !context.used.contains(&number) {
