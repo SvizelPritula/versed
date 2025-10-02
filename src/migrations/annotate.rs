@@ -4,7 +4,7 @@ use chumsky::container::Container;
 
 use crate::{
     ast::{Type, TypeSet, TypeType},
-    codegen::file_patching::AddEdit,
+    codegen::file_patching::{AddEdit, RemoveEdit},
     preprocessing::BasicMetadata,
     syntax::Span,
 };
@@ -91,6 +91,42 @@ fn collect_used_numbers(r#type: &Type<BasicMetadata>, numbers: &mut HashSet<u64>
             }
         }
         TypeType::List(list) => collect_used_numbers(&list.r#type, numbers),
+        TypeType::Primitive(_) => {}
+        TypeType::Identifier(_) => {}
+    }
+}
+
+pub fn strip_annotations(types: &TypeSet<BasicMetadata>) -> Vec<RemoveEdit> {
+    let mut edits = vec![];
+
+    for r#type in &types.types {
+        strip_annotations_in_type(&r#type.r#type, &mut edits);
+    }
+
+    edits
+}
+
+fn strip_annotations_in_type(r#type: &Type<BasicMetadata>, edits: &mut Vec<RemoveEdit>) {
+    if let Some(span) = r#type.metadata.span.number {
+        if is_span_empty(r#type.metadata.span.r#type) {
+            edits.push(RemoveEdit::new_trim_left(span.into_range()));
+        } else {
+            edits.push(RemoveEdit::new_trim_right(span.into_range()));
+        }
+    }
+
+    match &r#type.r#type {
+        TypeType::Struct(r#struct) => {
+            for field in &r#struct.fields {
+                strip_annotations_in_type(&field.r#type, edits)
+            }
+        }
+        TypeType::Enum(r#enum) => {
+            for variant in &r#enum.variants {
+                strip_annotations_in_type(&variant.r#type, edits)
+            }
+        }
+        TypeType::List(list) => strip_annotations_in_type(&list.r#type, edits),
         TypeType::Primitive(_) => {}
         TypeType::Identifier(_) => {}
     }

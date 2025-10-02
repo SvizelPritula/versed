@@ -8,8 +8,8 @@ use ariadne::{Color, Label, Report, ReportKind};
 
 use crate::{
     ast::TypeSet,
-    codegen::file_patching::{add_extention, apply_add_edits, concat_files},
-    migrations::annotate::annotate,
+    codegen::file_patching::{add_extention, apply_add_edits, apply_remove_edits, concat_files},
+    migrations::annotate::{annotate, strip_annotations},
     preprocessing::BasicMetadata,
     reports::Reports,
 };
@@ -44,11 +44,13 @@ pub fn finish(
     old_path: &Path,
     migration_path: &Path,
 ) -> Result<()> {
-    // TODO: Strip annotations
-    let _ = new_types;
-    let _ = new_path;
-
     concat_files(old_src, new_src, migration_path)?;
+
+    let edits = strip_annotations(new_types);
+
+    let mut file = BufWriter::new(File::create(new_path)?);
+    apply_remove_edits(&mut file, new_src, edits)?;
+    file.flush()?;
 
     fs::remove_file(old_path)?;
 

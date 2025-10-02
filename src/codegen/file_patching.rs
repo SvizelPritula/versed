@@ -3,6 +3,7 @@ use std::{
     fmt,
     fs::{File, OpenOptions},
     io::{BufWriter, Read, Result, Seek, SeekFrom, Write},
+    ops::Range,
     path::{Path, PathBuf},
 };
 
@@ -94,6 +95,68 @@ pub fn apply_add_edits<W: Write>(file: &mut W, src: &str, mut edits: Vec<AddEdit
         }
 
         file.write_all(&[byte])?;
+    }
+
+    Ok(())
+}
+
+#[derive(Debug)]
+pub struct RemoveEdit {
+    range: Range<usize>,
+    trim_left: bool,
+    trim_right: bool,
+}
+
+impl RemoveEdit {
+    pub fn new_trim_left(range: Range<usize>) -> RemoveEdit {
+        RemoveEdit {
+            range,
+            trim_left: true,
+            trim_right: false,
+        }
+    }
+
+    pub fn new_trim_right(range: Range<usize>) -> RemoveEdit {
+        RemoveEdit {
+            range,
+            trim_left: false,
+            trim_right: true,
+        }
+    }
+}
+
+pub fn apply_remove_edits<W: Write>(
+    file: &mut W,
+    src: &str,
+    mut edits: Vec<RemoveEdit>,
+) -> Result<()> {
+    for edit in &mut edits {
+        if edit.trim_left {
+            edit.range.start = src[..edit.range.start]
+                .char_indices()
+                .rev()
+                .take_while(|(_, c)| c.is_whitespace())
+                .last()
+                .map_or(edit.range.start, |(i, _)| i);
+        }
+
+        if edit.trim_right {
+            edit.range.end += src[edit.range.end..]
+                .char_indices()
+                .take_while(|(_, c)| c.is_whitespace())
+                .last()
+                .map_or(0, |(i, c)| i + c.len_utf8());
+        }
+    }
+
+    edits.sort_by_key(|e| Reverse(e.range.start));
+
+    for (index, byte) in src.bytes().enumerate() {
+        while edits.pop_if(|e| e.range.end <= index).is_some() {}
+
+        if !edits.last().is_some_and(|e| e.range.start <= index) {
+            file.write_all(&[byte])?;
+        }
     }
 
     Ok(())
