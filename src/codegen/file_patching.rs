@@ -154,7 +154,7 @@ pub fn apply_remove_edits<W: Write>(
     for (index, byte) in src.bytes().enumerate() {
         while edits.pop_if(|e| e.range.end <= index).is_some() {}
 
-        if !edits.last().is_some_and(|e| e.range.start <= index) {
+        if edits.last().is_none_or(|e| e.range.start > index) {
             file.write_all(&[byte])?;
         }
     }
