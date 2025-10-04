@@ -5,6 +5,8 @@ use tempfile::tempdir;
 
 use utils::CommandExt;
 
+use crate::utils::TSC_OPTIONS;
+
 mod utils;
 
 fn check_with_version(schema: &str, version: &str) {
@@ -24,7 +26,10 @@ fn check_with_version(schema: &str, version: &str) {
         .arg(dir.path())
         .run_and_check();
 
-    Command::new("tsc").arg(index_path).run_and_check();
+    Command::new("tsc")
+        .args(TSC_OPTIONS)
+        .arg(index_path)
+        .run_and_check();
 }
 
 fn check(schema: &str) {

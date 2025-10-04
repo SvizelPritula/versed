@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::process::Command;
 
 pub trait CommandExt {
@@ -22,3 +24,7 @@ impl CommandExt for Command {
         String::from_utf8(output.stdout).unwrap()
     }
 }
+
+pub const TSC_OPTIONS: &[&str] = &[
+    "--noEmit", "--strict", "--lib", "es2022", "--target", "es2022",
+];
