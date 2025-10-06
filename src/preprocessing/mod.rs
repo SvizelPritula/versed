@@ -1,12 +1,16 @@
 use name_resolution::resolve_names;
 
+mod annotation_check;
 mod name_resolution;
 mod recursion_check;
 
 pub use name_resolution::ResolutionMetadata;
 
 use crate::{
-    ast::TypeSet, composite, preprocessing::recursion_check::check_recursion, reports::Reports,
+    ast::TypeSet,
+    composite,
+    preprocessing::{annotation_check::check_annotations, recursion_check::check_recursion},
+    reports::Reports,
     syntax::SpanMetadata,
 };
 
@@ -16,6 +20,7 @@ pub fn preprocess<'filename>(
     filename: &'filename str,
 ) -> TypeSet<BasicMetadata> {
     let types = resolve_names(types, reports, filename);
+    check_annotations(&types, reports, filename);
     check_recursion(&types, reports, filename);
 
     types

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, ops::Range};
 
-use ariadne::{Color, Label, Report, ReportKind};
+use ariadne::{Color, Config, IndexType, Label, Report, ReportKind};
 
 use crate::{
     ast::{Type, TypeSet, TypeType},
@@ -91,7 +91,7 @@ fn make_report(
     filename: &str,
 ) -> Report<'static, (&str, Range<usize>)> {
     Report::build(ReportKind::Warning, (filename, span.into_range()))
-        .with_config(ariadne::Config::new().with_index_type(ariadne::IndexType::Byte))
+        .with_config(Config::new().with_index_type(IndexType::Byte))
         .with_message(message.clone())
         .with_label(
             Label::new((filename, span.into_range()))

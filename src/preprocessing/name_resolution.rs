@@ -3,7 +3,7 @@ use std::{
     ops::Range,
 };
 
-use ariadne::{Color, Label, Report, ReportKind};
+use ariadne::{Color, Config, IndexType, Label, Report, ReportKind};
 
 use crate::{
     ast::{
@@ -273,7 +273,7 @@ fn make_simple_report(
     filename: &str,
 ) -> Report<'static, (&str, Range<usize>)> {
     Report::build(ReportKind::Error, (filename, span.into_range()))
-        .with_config(ariadne::Config::new().with_index_type(ariadne::IndexType::Byte))
+        .with_config(Config::new().with_index_type(IndexType::Byte))
         .with_message(error.clone())
         .with_label(
             Label::new((filename, span.into_range()))
@@ -292,7 +292,7 @@ fn make_double_label_report(
     filename: &str,
 ) -> Report<'static, (&str, Range<usize>)> {
     Report::build(ReportKind::Error, (filename, primary_span.into_range()))
-        .with_config(ariadne::Config::new().with_index_type(ariadne::IndexType::Byte))
+        .with_config(Config::new().with_index_type(IndexType::Byte))
         .with_message(error)
         .with_label(
             Label::new((filename, primary_span.into_range()))

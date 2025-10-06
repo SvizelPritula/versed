@@ -60,6 +60,12 @@ pub struct TypeSpanInfo {
     pub number: Option<Span>,
 }
 
+impl TypeSpanInfo {
+    pub fn number_or_type(&self) -> Span {
+        self.number.unwrap_or(self.r#type)
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct MemberSpanInfo {
     pub name: Span,
