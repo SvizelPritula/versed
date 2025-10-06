@@ -1,13 +1,18 @@
 use std::{fmt::Display, ops::Range};
 
 use ariadne::{Color, Label, Report, ReportKind};
-use chumsky::{Parser, container::Container, error::Rich, input::Input, span::SimpleSpan};
+use chumsky::{
+    Parser, container::Container, error::Rich, extra, input::Input as _, span::SimpleSpan,
+};
 
 use crate::{
     ast::TypeSet,
     metadata::Metadata,
     reports::Reports,
-    syntax::{lexer::lexer, parser::parser},
+    syntax::{
+        lexer::lexer,
+        parser::{Error, Input, migration_file_parser, schema_file_parser},
+    },
 };
 
 pub mod lexer;
@@ -17,11 +22,15 @@ pub mod tokens;
 pub type Span = SimpleSpan;
 pub type Spanned<T> = (T, Span);
 
-pub fn parse<'filename>(
+fn parse<'filename, P, O>(
+    parser: P,
     src: &str,
     reports: &mut Reports<'filename>,
     filename: &'filename str,
-) -> Option<TypeSet<SpanMetadata>> {
+) -> Option<O>
+where
+    P: ParserFactory<O>,
+{
     let (tokens, errors) = lexer().parse(src).into_output_errors();
     reports.extend_fatal(errors.into_iter().map(|error| make_report(error, filename)));
 
@@ -30,13 +39,60 @@ pub fn parse<'filename>(
             .as_slice()
             .map((src.len()..src.len()).into(), |(t, s)| (t, s));
 
-        let (ast, errors) = parser().parse(tokens).into_output_errors();
+        let (ast, errors) = parser.make().parse(tokens).into_output_errors();
         reports.extend_fatal(errors.into_iter().map(|error| make_report(error, filename)));
 
         ast
     } else {
         None
     }
+}
+
+pub fn parse_schema<'filename>(
+    src: &str,
+    reports: &mut Reports<'filename>,
+    filename: &'filename str,
+) -> Option<TypeSet<SpanMetadata>> {
+    struct Factory;
+    impl ParserFactory<TypeSet<SpanMetadata>> for Factory {
+        fn make<'tokens, I: Input<'tokens>>(
+            self,
+        ) -> impl Parser<'tokens, I, TypeSet<SpanMetadata>, extra::Err<Error<'tokens>>> {
+            schema_file_parser()
+        }
+    }
+
+    parse(Factory, src, reports, filename)
+}
+
+pub fn parse_migration<'filename>(
+    src: &str,
+    reports: &mut Reports<'filename>,
+    filename: &'filename str,
+) -> Option<(TypeSet<SpanMetadata>, TypeSet<SpanMetadata>)> {
+    struct Factory;
+    impl ParserFactory<(TypeSet<SpanMetadata>, TypeSet<SpanMetadata>)> for Factory {
+        fn make<'tokens, I: Input<'tokens>>(
+            self,
+        ) -> impl Parser<
+            'tokens,
+            I,
+            (TypeSet<SpanMetadata>, TypeSet<SpanMetadata>),
+            extra::Err<Error<'tokens>>,
+        > {
+            migration_file_parser()
+        }
+    }
+
+    parse(Factory, src, reports, filename)
+}
+
+// There is no way to specify that the parser argument of parse has to implement
+// Parser<'t, I, ...> for every I: Input<'t>, necessitating this trait.
+trait ParserFactory<O> {
+    fn make<'tokens, I: Input<'tokens>>(
+        self,
+    ) -> impl Parser<'tokens, I, O, extra::Err<Error<'tokens>>>;
 }
 
 fn make_report<'src, 'tokens, T: Display>(

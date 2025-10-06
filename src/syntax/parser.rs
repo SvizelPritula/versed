@@ -8,6 +8,7 @@ use chumsky::{
     prelude::{any, choice, empty, end, just, recursive, skip_until, via_parser},
     select,
 };
+use either::Either;
 use icu_normalizer::ComposingNormalizerBorrowed;
 
 use crate::{
@@ -123,7 +124,9 @@ const UNIT: Primitive<SpanMetadata> = Primitive {
     metadata: (),
 };
 
-pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
+fn schema_parser<'tokens, I: Input<'tokens>>(
+    stop_at_version: bool,
+) -> Parser![TypeSet<SpanMetadata>] {
     let to_default_version = |()| (String::new(), Span::from(0..0));
 
     let version = keyword(Keyword::Version)
@@ -310,15 +313,27 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
             metadata: MemberSpanInfo { name: span },
         });
 
+    let type_recovery_start = if stop_at_version {
+        Either::Left(keyword(Keyword::Version).not())
+    } else {
+        Either::Right(empty())
+    };
+
     let types = named_type
         .map(Some)
-        .recover_with(skip_until(
-            any().ignored(),
-            punct(Punct::Semicolon).ignored(),
-            || None,
+        .recover_with(via_parser(
+            type_recovery_start
+                .clone()
+                .then(any().and_is(punct(Punct::Semicolon).not()).repeated())
+                .then(punct(Punct::Semicolon))
+                .to(None),
         ))
         .recover_with(via_parser(
-            any().repeated().at_least(1).then(end()).to(None),
+            type_recovery_start
+                .clone()
+                .then(any().repeated().at_least(1))
+                .then(end())
+                .to(None),
         ))
         .repeated()
         .collect()
@@ -333,4 +348,15 @@ pub fn parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
                 version: version_span,
             },
         })
+}
+
+pub fn schema_file_parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
+    schema_parser(false).then_ignore(end())
+}
+
+pub fn migration_file_parser<'tokens, I: Input<'tokens>>()
+-> Parser![(TypeSet<SpanMetadata>, TypeSet<SpanMetadata>)] {
+    schema_parser(true)
+        .then(schema_parser(true))
+        .then_ignore(end())
 }

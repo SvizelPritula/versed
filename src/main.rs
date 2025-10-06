@@ -17,7 +17,7 @@ use crate::{
     preprocessing::{BasicMetadata, preprocess},
     reports::Reports,
     rust::RustOptions,
-    syntax::parse,
+    syntax::parse_schema,
 };
 
 pub mod ast;
@@ -274,7 +274,7 @@ fn load_file_with_source(file: &Path) -> Result<(TypeSet<BasicMetadata>, String)
         .map_err(|_| ExitCode::from(exit_codes::IO))?;
     let mut reports = Reports::default();
 
-    let ast = parse(&src, &mut reports, &filename);
+    let ast = parse_schema(&src, &mut reports, &filename);
 
     let ast = if let Some(ast) = ast {
         let ast = preprocess(ast, &mut reports, &filename);

@@ -7,7 +7,7 @@ use utils::CommandExt;
 
 mod utils;
 
-fn check_with_options(schema: &str, check_rountrip: bool) {
+fn check_with_options(schema: &str, check_roundtrip: bool) {
     let dir = TempDir::new().unwrap();
     let file = dir.path().join("schema.vs");
     let old_file = dir.path().join("schema.vs.old");
@@ -52,7 +52,7 @@ fn check_with_options(schema: &str, check_rountrip: bool) {
     assert!(fs::exists(&migration_file).unwrap());
     assert!(!fs::exists(&old_file).unwrap());
 
-    if check_rountrip {
+    if check_roundtrip {
         assert_eq!(
             fs::read_to_string(&file).unwrap(),
             schema.replace("version v1;", "version v2;")
