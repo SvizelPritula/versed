@@ -5,27 +5,38 @@ use crate::{
     metadata::Metadata,
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct TypePair<'types, M: Metadata> {
     pub old: &'types Type<M>,
     pub new: &'types Type<M>,
 }
 
+impl<'types, M: Metadata> Copy for TypePair<'types, M> {}
+impl<'types, M: Metadata> Clone for TypePair<'types, M> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
 pub fn pair_types<'types, M: Metadata>(
     migration: &'types Migration<M>,
-) -> HashMap<u64, TypePair<'types, M>> {
+) -> Vec<TypePair<'types, M>> {
     type Element<'types, M> = (Option<&'types Type<M>>, Option<&'types Type<M>>);
     let mut map: HashMap<u64, Element<M>> = HashMap::new();
 
     collect_type_set(&migration.old, &mut map, |pair, value| pair.0 = Some(value));
     collect_type_set(&migration.new, &mut map, |pair, value| pair.1 = Some(value));
 
-    map.into_iter()
+    let mut vec = map
+        .into_iter()
         .flat_map(|(number, (old, new))| {
             old.zip(new)
                 .map(|(old, new)| (number, TypePair { old, new }))
         })
-        .collect()
+        .collect::<Vec<_>>();
+
+    vec.sort_by_key(|(n, _)| *n);
+    vec.into_iter().map(|(_, p)| p).collect()
 }
 
 fn collect_type_set<'types, M, E, F>(types: &'types TypeSet<M>, map: &mut HashMap<u64, E>, set: F)

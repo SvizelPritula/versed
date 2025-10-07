@@ -1,29 +1,30 @@
 use std::{
     borrow::Cow,
     fs::{File, create_dir_all},
-    io::{BufWriter, Result, Write},
+    io::{BufWriter, Result, Write, stdout},
     path::Path,
 };
 
 use crate::{
-    ast::TypeSet,
+    ast::{Migration, TypeSet},
     codegen::{
         file_patching::add_line_to_file,
         naming_pass::{NameMetadata, name},
         source_writer::SourceWriter,
     },
-    composite, mapper,
+    composite, getter, mapper,
+    migrations::pair_types,
     preprocessing::{BasicMetadata, ResolutionMetadata},
     rust::{
-        idents::RustNamingRules,
+        idents::{RustMigrationSuffixNamingRules, RustNamingRules},
+        migrations::emit_migration,
         recursive::{BoxMetadata, NewtypeMetadata, mark_boxes, mark_newtypes},
         types::emit_types,
     },
     typescript::TypeScriptNamingRules,
 };
 
-pub use migrations::generate_migration;
-
+mod codegen;
 mod idents;
 mod migrations;
 mod recursive;
@@ -49,6 +50,12 @@ impl RustOptions {
     }
 }
 
+impl Default for RustOptions {
+    fn default() -> Self {
+        Self::new(false, vec![])
+    }
+}
+
 fn convert_types(types: TypeSet<BasicMetadata>) -> TypeSet<RustMetadata> {
     let types = name(types, RustNamingRules, AddRustName);
     let mut types = name(types, TypeScriptNamingRules, AddTypeScriptName);
@@ -57,6 +64,11 @@ fn convert_types(types: TypeSet<BasicMetadata>) -> TypeSet<RustMetadata> {
     mark_newtypes(&mut types);
 
     types
+}
+
+fn convert_types_for_migration(types: TypeSet<BasicMetadata>) -> TypeSet<RustMigrationMetadata> {
+    let types = convert_types(types);
+    name(types, RustMigrationSuffixNamingRules, AddMigrationName)
 }
 
 pub fn generate_types(
@@ -72,6 +84,17 @@ pub fn generate_types(
     } else {
         write_to_directory(&types, options, output)
     }
+}
+
+pub fn generate_migration(migration: Migration<BasicMetadata>) -> Result<()> {
+    let migration = migration.map(convert_types_for_migration);
+    let pairs = pair_types(&migration);
+
+    let mut writer = SourceWriter::new(BufWriter::new(stdout().lock()));
+    emit_migration(&mut writer, &migration, &pairs, "upgrade")?;
+    writer.into_inner().flush()?;
+
+    Ok(())
 }
 
 fn write_to_directory(
@@ -151,5 +174,27 @@ mapper! {
             r#box: Default::default(),
             newtype: Default::default(),
         }
+    }
+}
+
+composite! {
+    struct (RustMigrationInfo, RustMigrationMetadata) {
+        base: RustMetadata | B,
+        migration_name: NameMetadata | M
+    }
+}
+
+mapper! {
+    fn AddMigrationName(base: RustMetadata, migration_name: NameMetadata) -> RustMigrationMetadata {
+        RustMigrationInfo {
+            base,
+            migration_name,
+        }
+    }
+}
+
+getter! {
+    fn GetBase(metadata: RustMigrationMetadata) -> RustMetadata {
+        &metadata.base
     }
 }

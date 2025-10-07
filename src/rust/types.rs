@@ -1,42 +1,23 @@
-use std::{
-    collections::HashSet,
-    io::{Result, Write},
-};
+use std::io::{Result, Write};
 
 use crate::{
-    ast::{Enum, NamedType, PrimitiveType, Struct, Type, TypeSet, TypeType},
+    ast::{Enum, NamedType, Struct, Type, TypeSet, TypeType},
     codegen::source_writer::SourceWriter,
-    rust::{RustMetadata, RustOptions},
+    metadata::GetIdentity,
+    rust::{
+        RustMetadata, RustOptions,
+        codegen::{self, all_rust_type_names},
+    },
 };
 
-#[derive(Debug, Clone, Copy)]
-struct Context<'a> {
-    types: &'a TypeSet<RustMetadata>,
-    options: &'a RustOptions,
-    used_type_names: &'a HashSet<&'a str>,
-}
-
-impl<'a> Context<'a> {
-    fn rust_type<'b>(&'a self, name: &'b str, fallback: &'b str) -> &'b str {
-        if self.used_type_names.contains(name) {
-            fallback
-        } else {
-            name
-        }
-    }
-}
+type Context<'a> = codegen::Context<'a, RustMetadata>;
 
 pub fn emit_types(
     writer: &mut SourceWriter<impl Write>,
     types: &TypeSet<RustMetadata>,
     options: &RustOptions,
 ) -> Result<()> {
-    let mut used_type_names = HashSet::new();
-
-    for r#type in &types.types {
-        used_type_names.insert(r#type.r#type.metadata.name.as_str());
-        add_all_rust_type_names(&r#type.r#type, &mut used_type_names);
-    }
+    let used_type_names = all_rust_type_names(types, GetIdentity);
 
     let context = Context {
         types,
@@ -193,39 +174,7 @@ fn write_type_name(
     r#type: &Type<RustMetadata>,
     r#box: bool,
 ) -> Result<()> {
-    if r#box {
-        writer.write(context.rust_type("Box", "::std::boxed::Box"))?;
-        writer.write("<")?;
-    }
-
-    match &r#type.r#type {
-        TypeType::Struct(_) | TypeType::Enum(_) => writer.write(&r#type.metadata.name)?,
-        TypeType::List(list) => {
-            writer.write(context.rust_type("Vec", "::std::vec::Vec"))?;
-            writer.write("<")?;
-            write_type_name(writer, context, &list.r#type, false)?;
-            writer.write(">")?;
-        }
-        TypeType::Primitive(primitive) => {
-            writer.write(match primitive.r#type {
-                PrimitiveType::String => context.rust_type("String", "::std::string::String"),
-                PrimitiveType::Number => context.rust_type("i64", "::std::primitive::i64"),
-                PrimitiveType::Unit => "()",
-            })?;
-        }
-        TypeType::Identifier(identifier) => writer.write(
-            &context.types.types[identifier.metadata.resolution]
-                .r#type
-                .metadata
-                .name,
-        )?,
-    }
-
-    if r#box {
-        writer.write(">")?;
-    }
-
-    Ok(())
+    codegen::write_type_name(writer, context, r#type, r#box, format_args!(""), GetIdentity)
 }
 
 fn write_derive(writer: &mut SourceWriter<impl Write>, context: Context) -> Result<()> {
@@ -246,26 +195,4 @@ fn write_derive(writer: &mut SourceWriter<impl Write>, context: Context) -> Resu
 
 fn needs_type_alias(r#type: &Type<RustMetadata>) -> bool {
     !matches!(r#type.r#type, TypeType::Struct(_) | TypeType::Enum(_))
-}
-
-fn add_all_rust_type_names<'a>(r#type: &'a Type<RustMetadata>, set: &mut HashSet<&'a str>) {
-    match &r#type.r#type {
-        TypeType::Struct(r#struct) => {
-            set.insert(&r#type.metadata.name);
-
-            for field in &r#struct.fields {
-                add_all_rust_type_names(&field.r#type, set);
-            }
-        }
-        TypeType::Enum(r#enum) => {
-            set.insert(&r#type.metadata.name);
-
-            for variant in &r#enum.variants {
-                add_all_rust_type_names(&variant.r#type, set);
-            }
-        }
-        TypeType::List(list) => add_all_rust_type_names(&list.r#type, set),
-        TypeType::Primitive(_primitive) => {}
-        TypeType::Identifier(_identifier) => {}
-    }
 }

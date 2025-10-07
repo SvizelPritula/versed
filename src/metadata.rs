@@ -60,9 +60,67 @@ pub trait GetMetadata<A: Metadata, R: Metadata> {
     fn get_variant<'a>(&self, metadata: &'a A::Variant) -> &'a R::Variant;
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct GetIdentity;
+
+impl<A: Metadata> GetMetadata<A, A> for GetIdentity {
+    fn get_type<'a>(&self, metadata: &'a <A as Metadata>::Type) -> &'a <A as Metadata>::Type {
+        metadata
+    }
+
+    fn get_type_set<'a>(
+        &self,
+        metadata: &'a <A as Metadata>::TypeSet,
+    ) -> &'a <A as Metadata>::TypeSet {
+        metadata
+    }
+
+    fn get_named<'a>(&self, metadata: &'a <A as Metadata>::Named) -> &'a <A as Metadata>::Named {
+        metadata
+    }
+
+    fn get_struct<'a>(&self, metadata: &'a <A as Metadata>::Struct) -> &'a <A as Metadata>::Struct {
+        metadata
+    }
+
+    fn get_enum<'a>(&self, metadata: &'a <A as Metadata>::Enum) -> &'a <A as Metadata>::Enum {
+        metadata
+    }
+
+    fn get_list<'a>(&self, metadata: &'a <A as Metadata>::List) -> &'a <A as Metadata>::List {
+        metadata
+    }
+
+    fn get_primitive<'a>(
+        &self,
+        metadata: &'a <A as Metadata>::Primitive,
+    ) -> &'a <A as Metadata>::Primitive {
+        metadata
+    }
+
+    fn get_identifier<'a>(
+        &self,
+        metadata: &'a <A as Metadata>::Identifier,
+    ) -> &'a <A as Metadata>::Identifier {
+        metadata
+    }
+
+    fn get_field<'a>(&self, metadata: &'a <A as Metadata>::Field) -> &'a <A as Metadata>::Field {
+        metadata
+    }
+
+    fn get_variant<'a>(
+        &self,
+        metadata: &'a <A as Metadata>::Variant,
+    ) -> &'a <A as Metadata>::Variant {
+        metadata
+    }
+}
+
 #[macro_export]
 macro_rules! mapper {
     {fn $name: ident($left_var: ident: $left: ty, $right_var: ident: $right: ty) -> $result: ty $body: block} => {
+        #[derive(Debug, Clone, Copy)]
         struct $name;
 
         macro_rules! mapper_func {
@@ -91,6 +149,7 @@ macro_rules! mapper {
 #[macro_export]
 macro_rules! getter {
     {fn $name: ident($metadata_var: ident: $metadata: ty) -> $result: ty $body: block} => {
+        #[derive(Debug, Clone, Copy)]
         struct $name;
 
         macro_rules! getter_func {
@@ -99,7 +158,7 @@ macro_rules! getter {
             };
         }
 
-        impl GetMetadata<$metadata, $result> for $name {
+        impl $crate::metadata::GetMetadata<$metadata, $result> for $name {
             getter_func!(get_type, Type, $crate::metadata::Metadata);
             getter_func!(get_type_set, TypeSet, $crate::metadata::Metadata);
             getter_func!(get_named, Named, $crate::metadata::Metadata);
@@ -124,7 +183,7 @@ macro_rules! composite {
             $(pub $field: $generic),*
         }
 
-        #[derive(Debug, Clone)]
+        #[derive(Debug, Clone, Copy)]
         $visibility struct $metadata;
 
         impl $crate::metadata::Metadata for $metadata {

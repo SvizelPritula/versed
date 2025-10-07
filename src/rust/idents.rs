@@ -81,3 +81,44 @@ impl NamingRules for RustNamingRules {
         (SnakeCase, RustModIdentRules)
     }
 }
+
+#[derive(Debug, Default, Clone, Copy)]
+pub struct RustMigrationSuffixIdentRules;
+
+impl IdentRules for RustMigrationSuffixIdentRules {
+    fn is_start_char(&self, ch: char) -> bool {
+        RustIdentRules.is_start_char(ch)
+    }
+
+    fn is_continue_char(&self, ch: char) -> bool {
+        RustIdentRules.is_continue_char(ch)
+    }
+
+    fn is_reserved(&self, _str: &str) -> bool {
+        false
+    }
+
+    fn reserved_prefix(&self) -> &str {
+        unreachable!("there are no reserved keywords starting with \"upgrade_\" or \"downgrade_\"")
+    }
+}
+
+pub struct RustMigrationSuffixNamingRules;
+
+impl NamingRules for RustMigrationSuffixNamingRules {
+    fn r#type(&self) -> impl NamingRule {
+        (SnakeCase, RustMigrationSuffixIdentRules)
+    }
+
+    // These are not actually used.
+    // It would be nice to redesing the naming pass to be modular.
+    fn field(&self) -> impl NamingRule {
+        (SnakeCase, RustMigrationSuffixIdentRules)
+    }
+    fn variant(&self) -> impl NamingRule {
+        (SnakeCase, RustMigrationSuffixIdentRules)
+    }
+    fn version(&self) -> impl NamingRule {
+        (SnakeCase, RustMigrationSuffixIdentRules)
+    }
+}
