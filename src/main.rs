@@ -13,7 +13,7 @@ use clap::{CommandFactory, Parser, Subcommand, ValueHint};
 use clap_complete::{Generator, Shell};
 
 use crate::{
-    ast::TypeSet,
+    ast::{Migration, TypeSet},
     preprocessing::{BasicMetadata, preprocess},
     reports::Reports,
     rust::RustOptions,
@@ -306,9 +306,7 @@ fn load_file_with_source(file: &Path) -> Result<(TypeSet<BasicMetadata>, String)
     }
 }
 
-fn load_migration(
-    file: &Path,
-) -> Result<(TypeSet<BasicMetadata>, TypeSet<BasicMetadata>), ExitCode> {
+fn load_migration(file: &Path) -> Result<Migration<BasicMetadata>, ExitCode> {
     let filename = file.to_string_lossy();
     let src = fs::read_to_string(file)
         .inspect_err(print_error)
@@ -317,10 +315,10 @@ fn load_migration(
 
     let migration = parse_migration(&src, &mut reports, &filename);
 
-    let migration = if let Some((old, new)) = migration {
+    let migration = if let Some(Migration { old, new }) = migration {
         let old = preprocess(old, &mut reports, &filename);
         let new = preprocess(new, &mut reports, &filename);
-        Some((old, new))
+        Some(Migration { old, new })
     } else {
         None
     };

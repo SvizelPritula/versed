@@ -80,3 +80,9 @@ pub struct NamedType<M: Metadata> {
     pub r#type: Type<M>,
     pub metadata: M::Named,
 }
+
+#[derive(Debug, Clone)]
+pub struct Migration<M: Metadata> {
+    pub old: TypeSet<M>,
+    pub new: TypeSet<M>,
+}

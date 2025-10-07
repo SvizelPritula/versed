@@ -13,8 +13,8 @@ use icu_normalizer::ComposingNormalizerBorrowed;
 
 use crate::{
     ast::{
-        Enum, Field, Identifier, List, NamedType, Primitive, PrimitiveType, Struct, Type, TypeSet,
-        TypeType, Variant,
+        Enum, Field, Identifier, List, Migration, NamedType, Primitive, PrimitiveType, Struct,
+        Type, TypeSet, TypeType, Variant,
     },
     syntax::{
         ExtendVec, MemberSpanInfo, Span, SpanMetadata, TypeSetSpanInfo, TypeSpanInfo,
@@ -354,9 +354,9 @@ pub fn schema_file_parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanM
     schema_parser(false).then_ignore(end())
 }
 
-pub fn migration_file_parser<'tokens, I: Input<'tokens>>()
--> Parser![(TypeSet<SpanMetadata>, TypeSet<SpanMetadata>)] {
+pub fn migration_file_parser<'tokens, I: Input<'tokens>>() -> Parser![Migration<SpanMetadata>] {
     schema_parser(true)
         .then(schema_parser(true))
+        .map(|(old, new)| Migration { old, new })
         .then_ignore(end())
 }

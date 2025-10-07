@@ -6,7 +6,7 @@ use chumsky::{
 };
 
 use crate::{
-    ast::TypeSet,
+    ast::{Migration, TypeSet},
     metadata::Metadata,
     reports::Reports,
     syntax::{
@@ -69,17 +69,12 @@ pub fn parse_migration<'filename>(
     src: &str,
     reports: &mut Reports<'filename>,
     filename: &'filename str,
-) -> Option<(TypeSet<SpanMetadata>, TypeSet<SpanMetadata>)> {
+) -> Option<Migration<SpanMetadata>> {
     struct Factory;
-    impl ParserFactory<(TypeSet<SpanMetadata>, TypeSet<SpanMetadata>)> for Factory {
+    impl ParserFactory<Migration<SpanMetadata>> for Factory {
         fn make<'tokens, I: Input<'tokens>>(
             self,
-        ) -> impl Parser<
-            'tokens,
-            I,
-            (TypeSet<SpanMetadata>, TypeSet<SpanMetadata>),
-            extra::Err<Error<'tokens>>,
-        > {
+        ) -> impl Parser<'tokens, I, Migration<SpanMetadata>, extra::Err<Error<'tokens>>> {
             migration_file_parser()
         }
     }
