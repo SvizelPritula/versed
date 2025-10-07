@@ -133,6 +133,9 @@ enum RustCommand {
         /// The path to the schema file
         #[arg(value_hint = ValueHint::FilePath)]
         file: PathBuf,
+        /// The path to the directory with the previously generated types
+        #[arg(value_hint = ValueHint::AnyPath)]
+        output: PathBuf,
     },
 }
 
@@ -241,9 +244,9 @@ fn main() -> ExitCode {
             Err(code) => code,
         },
         Command::Rust {
-            command: RustCommand::Migration { file },
+            command: RustCommand::Migration { file, output },
         } => match load_migration(&file) {
-            Ok(migration) => handle_io_result(rust::generate_migration(migration)),
+            Ok(migration) => handle_io_result(rust::generate_migration(migration, &output)),
             Err(code) => code,
         },
         Command::TypeScript {

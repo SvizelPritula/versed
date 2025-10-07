@@ -1,7 +1,7 @@
 use std::{
     borrow::Cow,
-    fs::{File, create_dir_all},
-    io::{BufWriter, Result, Write, stdout},
+    fs::{File, create_dir_all, exists},
+    io::{BufWriter, Result, Write},
     path::Path,
 };
 
@@ -86,13 +86,30 @@ pub fn generate_types(
     }
 }
 
-pub fn generate_migration(migration: Migration<BasicMetadata>) -> Result<()> {
+pub fn generate_migration(migration: Migration<BasicMetadata>, output: &Path) -> Result<()> {
+    const MIGRATION_MOD: &str = "migrations";
+
     let migration = migration.map(convert_types_for_migration);
     let pairs = pair_types(&migration);
 
-    let mut writer = SourceWriter::new(BufWriter::new(stdout().lock()));
+    let migrations_dir = output.join(MIGRATION_MOD);
+    let is_directory_new = !exists(&migrations_dir)?;
+    create_dir_all(&migrations_dir)?;
+
+    let mod_name = &migration.new.metadata.base.name;
+    let type_path = migrations_dir.join(format!("{mod_name}.rs"));
+    let file = File::create_new(type_path)?;
+
+    let mut writer = SourceWriter::new(BufWriter::new(file));
     emit_migration(&mut writer, &migration, &pairs, "upgrade")?;
     writer.into_inner().flush()?;
+
+    let mod_path = migrations_dir.join("mod.rs");
+    add_mod_to_file(mod_name, &mod_path)?;
+
+    if is_directory_new {
+        add_mod_to_file(MIGRATION_MOD, &output.join("mod.rs"))?;
+    }
 
     Ok(())
 }
@@ -105,7 +122,7 @@ fn write_to_directory(
     create_dir_all(path)?;
     let mod_name = &types.metadata.name;
 
-    let type_path = path.join(format!("{}.rs", mod_name));
+    let type_path = path.join(format!("{mod_name}.rs"));
     write_to_file(types, options, &type_path, true)?;
 
     let mod_path = path.join("mod.rs");
