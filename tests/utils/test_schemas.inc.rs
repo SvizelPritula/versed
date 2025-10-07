@@ -257,3 +257,25 @@ fn self_alias() {
         A = A;
     "});
 }
+
+#[test]
+fn mutual_alias() {
+    check(indoc! {"
+        version v1;
+
+        A = B;
+
+        B = A;
+    "});
+}
+
+#[test]
+fn alias_to_self_alias() {
+    check(indoc! {"
+        version v1;
+
+        A = B;
+
+        B = B;
+    "});
+}

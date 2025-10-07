@@ -12,7 +12,6 @@ use crate::{
 struct RecursionContext<'types> {
     types: &'types TypeSet<BasicMetadata>,
     cache: HashMap<usize, CheckResult>,
-    source: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -27,11 +26,10 @@ pub fn check_recursion<'filename>(
     reports: &mut Reports<'filename>,
     filename: &'filename str,
 ) {
-    for (source, r#type) in types.types.iter().enumerate() {
+    for r#type in &types.types {
         let mut context = RecursionContext {
             types,
             cache: HashMap::new(),
-            source,
         };
 
         if check_type(&r#type.r#type, &mut context) == CheckResult::InfiniteDepth {
@@ -52,14 +50,11 @@ fn check_named(index: usize, context: &mut RecursionContext) -> CheckResult {
         return *result;
     }
 
-    if index == context.source {
-        return CheckResult::InfiniteDepth;
-    }
-
     if index == INVALID_INDEX {
         return CheckResult::None;
     }
 
+    context.cache.insert(index, CheckResult::InfiniteDepth);
     let result = check_type(&context.types.types[index].r#type, context);
     context.cache.insert(index, result);
     result
