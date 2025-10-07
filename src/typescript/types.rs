@@ -1,4 +1,7 @@
-use std::io::{Result, Write};
+use std::{
+    collections::HashSet,
+    io::{Result, Write},
+};
 
 use crate::{
     ast::{PrimitiveType, Type, TypeSet, TypeType},
@@ -15,7 +18,7 @@ pub fn emit_types(
         writer.write(&r#type.r#type.metadata.name)?;
         writer.write(" = ")?;
 
-        if is_anomalously_recursive(&r#type.r#type, index) {
+        if is_anomalously_recursive(types, index) {
             writer.write("never")?;
         } else {
             emit_type(writer, types, &r#type.r#type)?;
@@ -105,10 +108,23 @@ fn emit_type(
     Ok(())
 }
 
-fn is_anomalously_recursive(r#type: &Type<TypeScriptMetadata>, index: usize) -> bool {
-    if let TypeType::Identifier(identifier) = &r#type.r#type {
-        identifier.metadata.resolution == index
-    } else {
-        false
+fn is_anomalously_recursive(r#types: &TypeSet<TypeScriptMetadata>, mut index: usize) -> bool {
+    let mut visited = HashSet::new();
+
+    loop {
+        let r#type = &types.types[index];
+
+        if let TypeType::Identifier(identifier) = &r#type.r#type.r#type {
+            visited.insert(index);
+            index = identifier.metadata.resolution;
+
+            if visited.contains(&index) {
+                break true;
+            } else {
+                continue;
+            }
+        } else {
+            break false;
+        }
     }
 }
