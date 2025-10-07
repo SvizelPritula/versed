@@ -17,7 +17,7 @@ use crate::{
     preprocessing::{BasicMetadata, preprocess},
     reports::Reports,
     rust::RustOptions,
-    syntax::parse_schema,
+    syntax::{parse_migration, parse_schema},
 };
 
 pub mod ast;
@@ -40,7 +40,7 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Command {
-    /// Check if a file is syntactically and semantically well-formed
+    /// Check if a schema file is syntactically and semantically well-formed
     ///
     /// Will exit with exit code 0 if it is and with exit code 1 if it isn't.
     Check {
@@ -93,6 +93,14 @@ enum MigrationCommand {
         /// The path to the migration file to output
         #[arg(value_hint = ValueHint::FilePath)]
         migration: PathBuf,
+    },
+    /// Check if a migration file is syntactically and semantically well-formed
+    ///
+    /// Will exit with exit code 0 if it is and with exit code 1 if it isn't.
+    Check {
+        /// The path to the migration file to check
+        #[arg(value_hint = ValueHint::FilePath)]
+        file: PathBuf,
     },
 }
 
@@ -204,6 +212,12 @@ fn main() -> ExitCode {
                 &migration_file,
             ))
         }
+        Command::Migration {
+            command: MigrationCommand::Check { file },
+        } => match load_migration(&file) {
+            Ok(_) => ExitCode::SUCCESS,
+            Err(code) => code,
+        },
         Command::Rust {
             command:
                 RustCommand::Types {
@@ -287,6 +301,34 @@ fn load_file_with_source(file: &Path) -> Result<(TypeSet<BasicMetadata>, String)
 
     if let Some(ast) = ast {
         Ok((ast, src))
+    } else {
+        Err(ExitCode::from(exit_codes::MALFORMED_FILE))
+    }
+}
+
+fn load_migration(
+    file: &Path,
+) -> Result<(TypeSet<BasicMetadata>, TypeSet<BasicMetadata>), ExitCode> {
+    let filename = file.to_string_lossy();
+    let src = fs::read_to_string(file)
+        .inspect_err(print_error)
+        .map_err(|_| ExitCode::from(exit_codes::IO))?;
+    let mut reports = Reports::default();
+
+    let migration = parse_migration(&src, &mut reports, &filename);
+
+    let migration = if let Some((old, new)) = migration {
+        let old = preprocess(old, &mut reports, &filename);
+        let new = preprocess(new, &mut reports, &filename);
+        Some((old, new))
+    } else {
+        None
+    };
+
+    print_all_reports(&reports, &filename, &src)?;
+
+    if let Some(migration) = migration {
+        Ok(migration)
     } else {
         Err(ExitCode::from(exit_codes::MALFORMED_FILE))
     }

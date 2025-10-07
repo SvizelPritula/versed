@@ -49,7 +49,12 @@ fn check_with_options(schema: &str, check_roundtrip: bool) {
         .arg(&file)
         .run_and_check();
 
-    assert!(fs::exists(&migration_file).unwrap());
+    Command::new(env!("CARGO_BIN_EXE_versed"))
+        .arg("migration")
+        .arg("check")
+        .arg(&migration_file)
+        .run_and_check();
+
     assert!(!fs::exists(&old_file).unwrap());
 
     if check_roundtrip {
