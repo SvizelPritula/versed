@@ -279,3 +279,14 @@ fn alias_to_self_alias() {
         B = B;
     "});
 }
+
+#[test]
+fn identifier_edge_cases() {
+    check(indoc! {r#"
+        version v1;
+
+        "ﷺ" = struct {}; // ID_Start and Letter, not XID_Start
+        𒐞 = struct {}; // ID_Start and XID_Start, not Letter
+        "ⸯ" = struct {}; // Letter, not ID_Start or XID_Start
+    "#});
+}

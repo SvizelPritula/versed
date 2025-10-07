@@ -174,7 +174,14 @@ fn write_type_name(
     r#type: &Type<RustMetadata>,
     r#box: bool,
 ) -> Result<()> {
-    codegen::write_type_name(writer, context, r#type, r#box, format_args!(""), GetIdentity)
+    codegen::write_type_name(
+        writer,
+        context,
+        r#type,
+        r#box,
+        format_args!(""),
+        GetIdentity,
+    )
 }
 
 fn write_derive(writer: &mut SourceWriter<impl Write>, context: Context) -> Result<()> {
