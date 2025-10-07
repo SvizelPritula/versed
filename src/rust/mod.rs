@@ -22,7 +22,10 @@ use crate::{
     typescript::TypeScriptNamingRules,
 };
 
+pub use migrations::generate_migration;
+
 mod idents;
+mod migrations;
 mod recursive;
 mod types;
 

@@ -86,3 +86,12 @@ pub struct Migration<M: Metadata> {
     pub old: TypeSet<M>,
     pub new: TypeSet<M>,
 }
+
+impl<M: Metadata> Migration<M> {
+    pub fn map<N: Metadata>(self, mut f: impl FnMut(TypeSet<M>) -> TypeSet<N>) -> Migration<N> {
+        Migration {
+            old: f(self.old),
+            new: f(self.new),
+        }
+    }
+}

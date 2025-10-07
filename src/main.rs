@@ -128,6 +128,12 @@ enum RustCommand {
         #[arg(short = 's', long)]
         serde: bool,
     },
+    /// Generate migration
+    Migration {
+        /// The path to the schema file
+        #[arg(value_hint = ValueHint::FilePath)]
+        file: PathBuf,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -234,6 +240,12 @@ fn main() -> ExitCode {
             }
             Err(code) => code,
         },
+        Command::Rust {
+            command: RustCommand::Migration { file },
+        } => match load_migration(&file) {
+            Ok(migration) => handle_io_result(rust::generate_migration(migration)),
+            Err(code) => code,
+        },
         Command::TypeScript {
             command:
                 TypeScriptCommand::Types {
@@ -290,12 +302,7 @@ fn load_file_with_source(file: &Path) -> Result<(TypeSet<BasicMetadata>, String)
 
     let ast = parse_schema(&src, &mut reports, &filename);
 
-    let ast = if let Some(ast) = ast {
-        let ast = preprocess(ast, &mut reports, &filename);
-        Some(ast)
-    } else {
-        None
-    };
+    let ast = ast.map(|types| preprocess(types, &mut reports, &filename));
 
     print_all_reports(&reports, &filename, &src)?;
 
@@ -315,13 +322,7 @@ fn load_migration(file: &Path) -> Result<Migration<BasicMetadata>, ExitCode> {
 
     let migration = parse_migration(&src, &mut reports, &filename);
 
-    let migration = if let Some(Migration { old, new }) = migration {
-        let old = preprocess(old, &mut reports, &filename);
-        let new = preprocess(new, &mut reports, &filename);
-        Some(Migration { old, new })
-    } else {
-        None
-    };
+    let migration = migration.map(|m| m.map(|types| preprocess(types, &mut reports, &filename)));
 
     print_all_reports(&reports, &filename, &src)?;
 

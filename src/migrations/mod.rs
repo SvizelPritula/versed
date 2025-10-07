@@ -14,7 +14,10 @@ use crate::{
     reports::Reports,
 };
 
+pub use pairing::{TypePair, pair_types};
+
 mod annotate;
+mod pairing;
 
 const OLD_EXTENSION: &str = ".old";
 
