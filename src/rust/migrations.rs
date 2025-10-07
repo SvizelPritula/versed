@@ -43,7 +43,7 @@ pub fn emit_migration(
     writer.indent();
 
     writer.write_fmt_nl(format_args!(
-        "use super::{{{}, {}}};",
+        "use super::super::super::{{{}, {}}};",
         migration.old.metadata.base.name, migration.new.metadata.base.name
     ))?;
     writer.blank_line();

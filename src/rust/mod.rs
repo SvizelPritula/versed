@@ -151,7 +151,7 @@ fn write_to_file(
 }
 
 fn add_mod_to_file(mod_name: &str, path: &Path) -> Result<()> {
-    add_line_to_file(path, format_args!("mod {mod_name};"))
+    add_line_to_file(path, format_args!("pub mod {mod_name};"))
 }
 
 composite! {
