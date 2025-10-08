@@ -1,8 +1,9 @@
 use std::io::{Result, Write};
 
 use crate::{
-    ast::{Migration, Type},
+    ast::{Migration, Primitive, Type, TypeType},
     codegen::source_writer::SourceWriter,
+    metadata::Metadata,
     migrations::TypePair,
     rust::{
         GetBase, RustMigrationMetadata, RustOptions,
@@ -49,7 +50,7 @@ pub fn emit_migration(
     writer.blank_line();
 
     for &pair in pairs {
-        emit_migration_for_pair(writer, context, pair)?;
+        emit_function(writer, context, pair)?;
     }
 
     writer.dedent();
@@ -58,7 +59,7 @@ pub fn emit_migration(
     Ok(())
 }
 
-fn emit_migration_for_pair(
+fn emit_function(
     writer: &mut SourceWriter<impl Write>,
     context: Context,
     pair: TypePair<RustMigrationMetadata>,
@@ -76,13 +77,80 @@ fn emit_migration_for_pair(
     writer.write_nl(" {")?;
     writer.indent();
 
-    writer.write_nl("todo!()")?;
+    emit_body(writer, context, pair)?;
 
     writer.dedent();
     writer.write_nl("}")?;
     writer.blank_line();
 
     Ok(())
+}
+
+fn emit_body(
+    writer: &mut SourceWriter<impl Write>,
+    context: Context,
+    pair: TypePair<RustMigrationMetadata>,
+) -> Result<()> {
+    let old_metadata = &pair.old.metadata;
+    let new_metadata = &pair.new.metadata;
+
+    match (&pair.old.r#type, &pair.new.r#type) {
+        (TypeType::Primitive(old), TypeType::Primitive(new)) => emit_primitive(
+            writer,
+            context,
+            GenericPair::new(old, new, old_metadata, new_metadata),
+        )?,
+        (_old, _new) => emit_todo(writer)?,
+    }
+
+    Ok(())
+}
+
+struct WithMetadata<'a, T> {
+    r#type: &'a T,
+    metadata: &'a <RustMigrationMetadata as Metadata>::Type,
+}
+
+struct GenericPair<'a, T> {
+    old: WithMetadata<'a, T>,
+    new: WithMetadata<'a, T>,
+}
+
+impl<'a, T> GenericPair<'a, T> {
+    fn new(
+        old: &'a T,
+        new: &'a T,
+        old_metadata: &'a <RustMigrationMetadata as Metadata>::Type,
+        new_metadata: &'a <RustMigrationMetadata as Metadata>::Type,
+    ) -> Self {
+        Self {
+            old: WithMetadata {
+                r#type: old,
+                metadata: old_metadata,
+            },
+            new: WithMetadata {
+                r#type: new,
+                metadata: new_metadata,
+            },
+        }
+    }
+}
+
+fn emit_primitive(
+    writer: &mut SourceWriter<impl Write>,
+    _context: Context,
+    GenericPair { old, new }: GenericPair<Primitive<RustMigrationMetadata>>,
+) -> Result<()> {
+    eprintln!("{:?} {:?}", old.r#type.r#type, new.r#type.r#type);
+    if old.r#type.r#type == new.r#type.r#type {
+        writer.write_nl(&old.metadata.migration_name)
+    } else {
+        emit_todo(writer)
+    }
+}
+
+fn emit_todo(writer: &mut SourceWriter<impl Write>) -> Result<()> {
+    writer.write_nl("todo!()")
 }
 
 fn write_type_name(

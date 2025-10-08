@@ -54,7 +54,7 @@ pub struct Primitive<M: Metadata> {
     pub metadata: M::Primitive,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PrimitiveType {
     String,
     Number,
