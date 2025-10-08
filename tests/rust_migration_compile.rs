@@ -58,6 +58,31 @@ fn check(old: &str, new: &str) {
 }
 
 #[test]
+fn no_change() {
+    let schema = indoc! {r#"
+        Post = #1 struct {
+            title: #2 string,
+            content: #3 string,
+            keywords: #4 [#5 string],
+            visibility: #6 Visibility,
+        };
+
+        Visibility = #7 enum {
+            public #8,
+            restricted: #9 struct {
+                users: #10 [#11 int]
+            },
+            private #12,
+        };
+    "#};
+
+    check(
+        &format!("version v1;\n\n{schema}"),
+        &format!("version v2;\n\n{schema}"),
+    );
+}
+
+#[test]
 fn struct_field_change() {
     check(
         indoc! {r#"
@@ -102,4 +127,3 @@ fn idetifier_target_change() {
         "#},
     );
 }
-

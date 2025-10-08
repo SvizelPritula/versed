@@ -1,7 +1,10 @@
-use std::io::{Result, Write};
+use std::{
+    fmt::{self, Display},
+    io::{Result, Write},
+};
 
 use crate::{
-    ast::{Identifier, Migration, Primitive, Type, TypeType},
+    ast::{Identifier, List, Migration, Primitive, Type, TypeType},
     codegen::source_writer::SourceWriter,
     metadata::Metadata,
     migrations::TypePair,
@@ -16,6 +19,20 @@ pub struct Context<'a> {
     old: codegen::Context<'a, RustMigrationMetadata>,
     new: codegen::Context<'a, RustMigrationMetadata>,
     direction: &'static str,
+}
+
+impl<'a> Context<'a> {
+    fn function_between(
+        &'a self,
+        old: &'a Type<RustMigrationMetadata>,
+        new: &'a Type<RustMigrationMetadata>,
+    ) -> Option<impl Display> {
+        if old.number.zip(new.number).is_some_and(|(o, n)| o == n) {
+            Some(FunctionName(self.direction, &new.metadata.migration_name))
+        } else {
+            None
+        }
+    }
 }
 
 pub fn emit_migration(
@@ -95,6 +112,11 @@ fn emit_body(
     let new_metadata = &pair.new.metadata;
 
     match (&pair.old.r#type, &pair.new.r#type) {
+        (TypeType::List(old), TypeType::List(new)) => emit_list(
+            writer,
+            context,
+            GenericPair::new(old, new, old_metadata, new_metadata),
+        )?,
         (TypeType::Primitive(old), TypeType::Primitive(new)) => emit_primitive(
             writer,
             context,
@@ -141,6 +163,20 @@ impl<'a, T> GenericPair<'a, T> {
     }
 }
 
+fn emit_list(
+    writer: &mut SourceWriter<impl Write>,
+    context: Context,
+    GenericPair { old, new }: GenericPair<List<RustMigrationMetadata>>,
+) -> Result<()> {
+    let arg = &old.metadata.migration_name;
+
+    if let Some(func) = context.function_between(&old.r#type.r#type, &new.r#type.r#type) {
+        writer.write_fmt_nl(format_args!("{arg}.into_iter().map({func}).collect()"))
+    } else {
+        emit_todo(writer)
+    }
+}
+
 fn emit_primitive(
     writer: &mut SourceWriter<impl Write>,
     _context: Context,
@@ -160,17 +196,10 @@ fn emit_identifier(
 ) -> Result<()> {
     let old_ref = &context.old.types.types[old.r#type.metadata.base.resolution];
     let new_ref = &context.new.types.types[new.r#type.metadata.base.resolution];
+    let arg = &old.metadata.migration_name;
 
-    if old_ref
-        .r#type
-        .number
-        .zip(new_ref.r#type.number)
-        .is_some_and(|(o, n)| o == n)
-    {
-        writer.write_fmt_nl(format_args!(
-            "{}_{}({})",
-            context.direction, new_ref.r#type.metadata.migration_name, old.metadata.migration_name
-        ))
+    if let Some(func) = context.function_between(&old_ref.r#type, &new_ref.r#type) {
+        writer.write_fmt_nl(format_args!("{func}({arg})"))
     } else {
         emit_todo(writer)
     }
@@ -178,6 +207,15 @@ fn emit_identifier(
 
 fn emit_todo(writer: &mut SourceWriter<impl Write>) -> Result<()> {
     writer.write_nl("todo!()")
+}
+
+struct FunctionName<'a>(&'a str, &'a str);
+
+impl Display for FunctionName<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let FunctionName(prefix, suffix) = self;
+        write!(f, "{prefix}_{suffix}")
+    }
 }
 
 fn write_type_name(
