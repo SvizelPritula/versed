@@ -83,7 +83,7 @@ fn no_change() {
 }
 
 #[test]
-fn struct_field_change() {
+fn struct_change_field() {
     check(
         indoc! {r#"
             version v1;
@@ -105,7 +105,30 @@ fn struct_field_change() {
 }
 
 #[test]
-fn idetifier_target_change() {
+fn struct_add_field() {
+    check(
+        indoc! {r#"
+            version v1;
+
+            User = #1 struct {
+                name: #2 string,
+                age: #3 int,
+            };
+        "#},
+        indoc! {r#"
+            version v2;
+
+            User = #1 struct {
+                name: #2 string,
+                age: #3 int,
+                password: string,
+            };
+        "#},
+    );
+}
+
+#[test]
+fn change_identifier_target() {
     check(
         indoc! {r#"
             version v1;
