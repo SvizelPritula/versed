@@ -78,3 +78,28 @@ fn struct_field_change() {
         "#},
     );
 }
+
+#[test]
+fn idetifier_target_change() {
+    check(
+        indoc! {r#"
+            version v1;
+
+            A = #1 struct {
+                field: #2 B,
+            };
+
+            B = #3 int;
+        "#},
+        indoc! {r#"
+            version v2;
+
+            A = #1 struct {
+                field: #2 B,
+            };
+
+            B = #3 string;
+        "#},
+    );
+}
+

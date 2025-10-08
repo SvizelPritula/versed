@@ -1,7 +1,7 @@
 use std::io::{Result, Write};
 
 use crate::{
-    ast::{Migration, Primitive, Type, TypeType},
+    ast::{Identifier, Migration, Primitive, Type, TypeType},
     codegen::source_writer::SourceWriter,
     metadata::Metadata,
     migrations::TypePair,
@@ -100,6 +100,11 @@ fn emit_body(
             context,
             GenericPair::new(old, new, old_metadata, new_metadata),
         )?,
+        (TypeType::Identifier(old), TypeType::Identifier(new)) => emit_identifier(
+            writer,
+            context,
+            GenericPair::new(old, new, old_metadata, new_metadata),
+        )?,
         (_old, _new) => emit_todo(writer)?,
     }
 
@@ -141,9 +146,31 @@ fn emit_primitive(
     _context: Context,
     GenericPair { old, new }: GenericPair<Primitive<RustMigrationMetadata>>,
 ) -> Result<()> {
-    eprintln!("{:?} {:?}", old.r#type.r#type, new.r#type.r#type);
     if old.r#type.r#type == new.r#type.r#type {
         writer.write_nl(&old.metadata.migration_name)
+    } else {
+        emit_todo(writer)
+    }
+}
+
+fn emit_identifier(
+    writer: &mut SourceWriter<impl Write>,
+    context: Context,
+    GenericPair { old, new }: GenericPair<Identifier<RustMigrationMetadata>>,
+) -> Result<()> {
+    let old_ref = &context.old.types.types[old.r#type.metadata.base.resolution];
+    let new_ref = &context.new.types.types[new.r#type.metadata.base.resolution];
+
+    if old_ref
+        .r#type
+        .number
+        .zip(new_ref.r#type.number)
+        .is_some_and(|(o, n)| o == n)
+    {
+        writer.write_fmt_nl(format_args!(
+            "{}_{}({})",
+            context.direction, new_ref.r#type.metadata.migration_name, old.metadata.migration_name
+        ))
     } else {
         emit_todo(writer)
     }
