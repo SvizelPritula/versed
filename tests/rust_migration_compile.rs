@@ -57,29 +57,57 @@ fn check(old: &str, new: &str) {
         .run_and_check();
 }
 
-#[test]
-fn no_change() {
-    let schema = indoc! {r#"
-        Post = #1 struct {
-            title: #2 string,
-            content: #3 string,
-            keywords: #4 [#5 string],
-            visibility: #6 Visibility,
-        };
+mod unchanged {
+    use std::{fs, process::Command};
 
-        Visibility = #7 enum {
-            public #8,
-            restricted: #9 struct {
-                users: #10 [#11 int]
-            },
-            private #12,
-        };
-    "#};
+    use indoc::indoc;
+    use tempfile::tempdir;
 
-    check(
-        &format!("version v1;\n\n{schema}"),
-        &format!("version v2;\n\n{schema}"),
-    );
+    use crate::utils::CommandExt;
+
+    fn check(schema: &str) {
+        let dir = tempdir().unwrap();
+        let file = dir.path().join("schema.rs");
+
+        fs::write(&file, schema).unwrap();
+
+        Command::new(env!("CARGO_BIN_EXE_versed"))
+            .arg("migration")
+            .arg("begin")
+            .arg(&file)
+            .run_and_check();
+
+        let schema = fs::read_to_string(&file).unwrap();
+
+        super::check(&schema, &schema.replace("version v1;", "version v2;"));
+    }
+
+    include!("utils/test_schemas.inc.rs");
+
+    #[test]
+    fn complex_example() {
+        let schema = indoc! {r#"
+            Post = #1 struct {
+                title: #2 string,
+                content: #3 string,
+                keywords: #4 [#5 string],
+                visibility: #6 Visibility,
+            };
+
+            Visibility = #7 enum {
+                public #8,
+                restricted: #9 struct {
+                    users: #10 [#11 int]
+                },
+                private #12,
+            };
+        "#};
+
+        super::check(
+            &format!("version v1;\n\n{schema}"),
+            &format!("version v2;\n\n{schema}"),
+        );
+    }
 }
 
 #[test]
