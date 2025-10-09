@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    ast::{Field, Identifier, List, Migration, Primitive, Struct, Type, TypeType},
+    ast::{Enum, Field, Identifier, List, Migration, Primitive, Struct, Type, TypeType, Variant},
     codegen::source_writer::SourceWriter,
     metadata::Metadata,
     migrations::TypePair,
@@ -115,6 +115,11 @@ fn emit_body(
             context,
             GenericPair::new(old, new, pair.old, pair.new),
         )?,
+        (TypeType::Enum(old), TypeType::Enum(new)) => emit_enum(
+            writer,
+            context,
+            GenericPair::new(old, new, pair.old, pair.new),
+        )?,
         (TypeType::List(old), TypeType::List(new)) => emit_list(
             writer,
             context,
@@ -197,6 +202,51 @@ fn emit_struct(
             let func = context.function_to(&field.r#type);
             let field_name = &old_field.metadata.base.name;
             writer.write_fmt(format_args!("{func}({arg}.{field_name})"))?;
+        } else {
+            writer.write(TODO)?;
+        }
+
+        writer.write_nl(",")?;
+    }
+
+    writer.dedent();
+    writer.write_nl("}")?;
+
+    Ok(())
+}
+
+fn emit_enum(
+    writer: &mut SourceWriter<impl Write>,
+    context: Context,
+    GenericPair { old, new }: GenericPair<Enum<RustMigrationMetadata>>,
+) -> Result<()> {
+    let arg = &old.metadata().migration_name;
+
+    writer.write_fmt_nl(format_args!("match {arg} {{"))?;
+    writer.indent();
+
+    let by_type_number: HashMap<u64, &Variant<RustMigrationMetadata>> = new
+        .r#type
+        .variants
+        .iter()
+        .flat_map(|variant| variant.r#type.number.map(|number| (number, variant)))
+        .collect();
+
+    for variant in &old.r#type.variants {
+        let binding = &variant.metadata.migration_name;
+
+        write_type_name(writer, context.old, old.full, false)?;
+        writer.write_fmt(format_args!(
+            "::{}({binding}) => ",
+            variant.metadata.base.name
+        ))?;
+
+        if let Some(&new_variant) = variant.r#type.number.and_then(|n| by_type_number.get(&n)) {
+            let func = context.function_to(&new_variant.r#type);
+            let variant_name = &new_variant.metadata.base.name;
+
+            write_type_name(writer, context.new, new.full, false)?;
+            writer.write_fmt(format_args!("::{variant_name}({func}({binding}))"))?;
         } else {
             writer.write(TODO)?;
         }

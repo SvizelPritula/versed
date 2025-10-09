@@ -128,6 +128,136 @@ fn struct_add_field() {
 }
 
 #[test]
+fn struct_remove_field() {
+    check(
+        indoc! {r#"
+            version v1;
+
+            User = #1 struct {
+                name: #2 string,
+                age: #3 int,
+            };
+        "#},
+        indoc! {r#"
+            version v2;
+
+            User = #1 struct {
+                name: #2 string,
+            };
+        "#},
+    );
+}
+
+#[test]
+fn struct_rename_field() {
+    check(
+        indoc! {r#"
+            version v1;
+
+            User = #1 struct {
+                name: #2 string,
+                age: #3 int,
+            };
+        "#},
+        indoc! {r#"
+            version v2;
+
+            User = #1 struct {
+                full_name: #2 string,
+                age: #3 int,
+            };
+        "#},
+    );
+}
+
+#[test]
+fn enum_change_variant() {
+    check(
+        indoc! {r#"
+            version v1;
+
+            Contact = #1 enum {
+                email: #2 string,
+                phone: #3 int,
+            };
+        "#},
+        indoc! {r#"
+            version v2;
+
+            Contact = #1 enum {
+                email: #2 string,
+                phone: #3 string,
+            };
+        "#},
+    );
+}
+
+#[test]
+fn enum_add_variant() {
+    check(
+        indoc! {r#"
+            version v1;
+
+            Contact = #1 enum {
+                email: #2 string,
+                phone: #3 int,
+            };
+        "#},
+        indoc! {r#"
+            version v2;
+
+            Contact = #1 enum {
+                email: #2 string,
+                phone: #3 string,
+            };
+        "#},
+    );
+}
+
+#[test]
+fn enum_remove_variant() {
+    check(
+        indoc! {r#"
+            version v1;
+
+            Contact = #1 enum {
+                email: #2 string,
+                phone: #3 int,
+            };
+        "#},
+        indoc! {r#"
+            version v2;
+
+            Contact = #1 enum {
+                email: #2 string,
+            };
+        "#},
+    );
+}
+
+#[test]
+fn enum_rename_variant() {
+    check(
+        indoc! {r#"
+            version v1;
+
+            Contact = #1 enum {
+                email: #2 string,
+                phone: #3 int,
+            };
+        "#},
+        indoc! {r#"
+            version v2;
+
+            Contact = #1 enum {
+                email: #2 string,
+                phone_number: #3 int,
+            };
+        "#},
+    );
+}
+
+#[test]
 fn change_identifier_target() {
     check(
         indoc! {r#"
