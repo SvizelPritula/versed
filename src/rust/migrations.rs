@@ -6,10 +6,10 @@ use std::{
 
 use crate::{
     ast::{Enum, Field, Identifier, List, Migration, Primitive, Struct, Type, TypeType, Variant},
-    codegen::source_writer::SourceWriter,
+    codegen::{idents::IdentRules, source_writer::SourceWriter},
     metadata::Metadata,
     migrations::TypePair,
-    rust::{GetBase, RustMigrationMetadata, RustOptions, codegen},
+    rust::{GetBase, RustMigrationMetadata, RustOptions, codegen, idents::RustIdentRules},
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -33,7 +33,11 @@ impl<'a> Context<'a> {
     }
 
     fn function_to(&'a self, new: &'a Type<RustMigrationMetadata>) -> impl Display {
-        FunctionName(self.direction, &new.metadata.migration_name)
+        let name = &new.metadata.migration_name;
+        let name = name
+            .strip_prefix(RustIdentRules.reserved_prefix())
+            .unwrap_or(name);
+        FunctionName(self.direction, name)
     }
 }
 
