@@ -28,3 +28,8 @@ impl CommandExt for Command {
 pub const TSC_OPTIONS: &[&str] = &[
     "--noEmit", "--strict", "--lib", "es2022", "--target", "es2022",
 ];
+
+#[cfg(not(target_os = "windows"))]
+pub const TSC_COMMAND: &str = "tsc";
+#[cfg(target_os = "windows")]
+pub const TSC_COMMAND: &str = "tsc.cmd";

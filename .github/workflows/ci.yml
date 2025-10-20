@@ -17,9 +17,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - if: ${{ runner.os == 'Windows' }}
-        run: |
-          npm i typescript
-          echo "$pwd\node_modules\typescript\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        run: npm i -g typescript
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true

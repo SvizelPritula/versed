@@ -5,7 +5,7 @@ use tempfile::tempdir;
 
 use utils::CommandExt;
 
-use crate::utils::TSC_OPTIONS;
+use crate::utils::{TSC_COMMAND, TSC_OPTIONS};
 
 mod utils;
 
@@ -119,7 +119,7 @@ fn roundtrip() {
         .arg(&typescript_path)
         .run_and_check();
 
-    Command::new("tsc")
+    Command::new(TSC_COMMAND)
         .args(TSC_OPTIONS)
         .arg(index_path)
         .run_and_check();
