@@ -8,11 +8,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
+      - if: ${{ runner.os == 'Windows' }}
+        shell: bash
+        run: |
+          npm i typescript
+          echo "$PWD/node_modules/typescript/bin/" >> $GITHUB_PATH
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
