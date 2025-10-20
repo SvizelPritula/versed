@@ -2,6 +2,9 @@ name: CI
 
 on: [push, pull_request]
 
+env:
+  RUSTFLAGS: -Csymbol-mangling-version=v0
+
 jobs:
   test:
     name: Tests (${{ matrix.os }})
