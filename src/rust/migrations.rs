@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    fmt::{self, Display},
+    fmt::{self, Arguments, Display},
     io::{Result, Write},
 };
 
@@ -139,7 +139,7 @@ fn emit_body(
             context,
             GenericPair::new(old, new, pair.old, pair.new),
         )?,
-        (_old, _new) => emit_todo(writer)?,
+        (_old, _new) => write_todo(writer)?,
     }
 
     Ok(())
@@ -203,9 +203,16 @@ fn emit_struct(
         writer.write_fmt(format_args!("{}: ", field.metadata.base.name))?;
 
         if let Some(&old_field) = field.r#type.number.and_then(|n| by_type_number.get(&n)) {
-            let func = context.function_to(&field.r#type);
             let field_name = &old_field.metadata.base.name;
-            writer.write_fmt(format_args!("{func}({arg}.{field_name})"))?;
+
+            write_upgrade(
+                writer,
+                context,
+                format_args!("{arg}.{field_name}"),
+                &field.r#type,
+                old_field.metadata.base.r#box,
+                field.metadata.base.r#box,
+            )?;
         } else {
             writer.write(TODO)?;
         }
@@ -246,11 +253,19 @@ fn emit_enum(
         ))?;
 
         if let Some(&new_variant) = variant.r#type.number.and_then(|n| by_type_number.get(&n)) {
-            let func = context.function_to(&new_variant.r#type);
             let variant_name = &new_variant.metadata.base.name;
 
             write_type_name(writer, context.new, new.full, false)?;
-            writer.write_fmt(format_args!("::{variant_name}({func}({binding}))"))?;
+            writer.write_fmt(format_args!("::{variant_name}("))?;
+            write_upgrade(
+                writer,
+                context,
+                format_args!("{binding}"),
+                &new_variant.r#type,
+                variant.metadata.base.r#box,
+                new_variant.metadata.base.r#box,
+            )?;
+            writer.write(")")?;
         } else {
             writer.write(TODO)?;
         }
@@ -274,7 +289,7 @@ fn emit_list(
     if let Some(func) = context.function_between(&old.r#type.r#type, &new.r#type.r#type) {
         writer.write_fmt_nl(format_args!("{arg}.into_iter().map({func}).collect()"))
     } else {
-        emit_todo(writer)
+        write_todo(writer)
     }
 }
 
@@ -286,7 +301,7 @@ fn emit_primitive(
     if old.r#type.r#type == new.r#type.r#type {
         writer.write_nl(&old.metadata().migration_name)
     } else {
-        emit_todo(writer)
+        write_todo(writer)
     }
 }
 
@@ -302,11 +317,41 @@ fn emit_identifier(
     if let Some(func) = context.function_between(&old_ref.r#type, &new_ref.r#type) {
         writer.write_fmt_nl(format_args!("{func}({arg})"))
     } else {
-        emit_todo(writer)
+        write_todo(writer)
     }
 }
 
-fn emit_todo(writer: &mut SourceWriter<impl Write>) -> Result<()> {
+fn write_upgrade(
+    writer: &mut SourceWriter<impl Write>,
+    context: Context,
+    binding: Arguments,
+    to_type: &Type<RustMigrationMetadata>,
+    old_boxed: bool,
+    new_boxed: bool,
+) -> Result<()> {
+    let func = context.function_to(to_type);
+
+    if new_boxed {
+        writer.write("Box::new(")?;
+    }
+
+    writer.write_fmt(format_args!("{func}("))?;
+
+    if old_boxed {
+        writer.write("*")?;
+    }
+
+    writer.write_fmt(binding)?;
+    writer.write(")")?;
+
+    if new_boxed {
+        writer.write(")")?;
+    }
+
+    Ok(())
+}
+
+fn write_todo(writer: &mut SourceWriter<impl Write>) -> Result<()> {
     writer.write_nl(TODO)
 }
 
