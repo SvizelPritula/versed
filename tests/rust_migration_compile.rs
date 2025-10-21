@@ -308,3 +308,94 @@ fn change_identifier_target() {
         "#},
     );
 }
+
+#[test]
+fn change_boxedness_struct() {
+    check(
+        indoc! {r#"
+            version v1;
+
+            upper = #1 enum {
+                a: #2 int,
+            };
+
+            lower = #3 struct {
+                a: #4 int,
+                b: #5 upper,
+            };
+        "#},
+        indoc! {r#"
+            version v2;
+
+            upper = #1 enum {
+                a: #2 int,
+                b: lower,
+            };
+
+            lower = #3 struct {
+                a: #4 int,
+                b: #5 upper,
+            };
+        "#},
+    );
+}
+
+#[test]
+fn change_boxedness_enum() {
+    check(
+        indoc! {r#"
+            version v1;
+
+            upper = #1 struct {
+                a: #2 int,
+            };
+
+            lower = #3 enum {
+                a: #4 int,
+                b: #5 upper,
+            };
+        "#},
+        indoc! {r#"
+            version v2;
+
+            upper = #1 struct {
+                a: #2 int,
+                b: lower,
+            };
+
+            lower = #3 enum {
+                a: #4 int,
+                b: #5 upper,
+            };
+        "#},
+    );
+}
+
+#[test]
+fn change_boxedness_alias() {
+    check(
+        indoc! {r#"
+            version v1;
+
+            upper = #1 enum {
+                a: #2 int,
+            };
+
+            lower = #3 upper;
+
+            reference = #4 lower;
+        "#},
+        indoc! {r#"
+            version v2;
+
+            upper = #1 enum {
+                a: #2 int,
+                b: lower,
+            };
+
+            lower = #3 upper;
+
+            reference = #4 lower;
+        "#},
+    );
+}
