@@ -118,8 +118,12 @@ enum RustCommand {
         /// The path to the directory in which to create a file with the generated types
         #[arg(value_hint = ValueHint::AnyPath)]
         output: PathBuf,
-        /// Interpret <OUTPUT> as a file instead of as a directory
-        #[arg(short = 'f', long)]
+        /// Interpret \<OUTPUT\> as a file instead of as a directory
+        #[arg(
+            short = 'f',
+            long,
+            help = "Interpret <OUTPUT> as a file instead of as a directory"
+        )]
         to_file: bool,
         /// Derive another trait
         #[arg(short = 'd', long)]
@@ -153,8 +157,12 @@ enum TypeScriptCommand {
         /// The path to the directory in which to create a file with the generated types
         #[arg(value_hint = ValueHint::AnyPath)]
         output: PathBuf,
-        /// Interpret <OUTPUT> as a file instead of as a directory
-        #[arg(short = 'f', long)]
+        /// Interpret \<OUTPUT\> as a file instead of as a directory
+        #[arg(
+            short = 'f',
+            long,
+            help = "Interpret <OUTPUT> as a file instead of as a directory"
+        )]
         to_file: bool,
     },
 }
