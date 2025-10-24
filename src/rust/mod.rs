@@ -17,7 +17,7 @@ use crate::{
     preprocessing::{BasicMetadata, ResolutionMetadata},
     rust::{
         idents::{RustMigrationSuffixNamingRules, RustNamingRules},
-        migrations::emit_migration,
+        migrations::emit_migrations,
         recursive::{BoxMetadata, NewtypeMetadata, mark_boxes, mark_newtypes},
         types::emit_types,
     },
@@ -101,7 +101,7 @@ pub fn generate_migration(migration: Migration<BasicMetadata>, output: &Path) ->
     let file = File::create_new(type_path)?;
 
     let mut writer = SourceWriter::new(BufWriter::new(file));
-    emit_migration(&mut writer, &migration, &pairs, "upgrade")?;
+    emit_migrations(&mut writer, &migration, &pairs)?;
     writer.into_inner().flush()?;
 
     let mod_path = migrations_dir.join("mod.rs");

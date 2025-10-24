@@ -5,7 +5,10 @@ use std::{
 };
 
 use crate::{
-    ast::{Enum, Field, Identifier, List, Migration, Primitive, Struct, Type, TypeType, Variant},
+    ast::{
+        Enum, Field, Identifier, List, Migration, Primitive, Struct, Type, TypeSet, TypeType,
+        Variant,
+    },
     codegen::{idents::IdentRules, source_writer::SourceWriter},
     metadata::Metadata,
     migrations::TypePair,
@@ -43,9 +46,33 @@ impl<'a> Context<'a> {
 
 const TODO: &str = "todo!()";
 
-pub fn emit_migration(
+pub fn emit_migrations(
     writer: &mut SourceWriter<impl Write>,
     migration: &Migration<RustMigrationMetadata>,
+    pairs: &[TypePair<RustMigrationMetadata>],
+) -> Result<()> {
+    let swaped_pairs: Vec<TypePair<RustMigrationMetadata>> = pairs
+        .iter()
+        .map(|TypePair { old, new }| TypePair { old: new, new: old })
+        .collect();
+
+    emit_directional_migration(writer, &migration.old, &migration.new, pairs, "upgrade")?;
+    writer.blank_line();
+    emit_directional_migration(
+        writer,
+        &migration.new,
+        &migration.old,
+        &swaped_pairs,
+        "downgrade",
+    )?;
+
+    Ok(())
+}
+
+fn emit_directional_migration(
+    writer: &mut SourceWriter<impl Write>,
+    old: &TypeSet<RustMigrationMetadata>,
+    new: &TypeSet<RustMigrationMetadata>,
     pairs: &[TypePair<RustMigrationMetadata>],
     direction: &'static str,
 ) -> Result<()> {
@@ -53,12 +80,12 @@ pub fn emit_migration(
 
     let context = Context {
         old: codegen::Context {
-            types: &migration.old,
+            types: old,
             options: &options,
             used_type_names: &HashSet::new(),
         },
         new: codegen::Context {
-            types: &migration.new,
+            types: new,
             options: &options,
             used_type_names: &HashSet::new(),
         },
@@ -70,7 +97,7 @@ pub fn emit_migration(
 
     writer.write_fmt_nl(format_args!(
         "use super::super::super::{{{}, {}}};",
-        migration.old.metadata.base.name, migration.new.metadata.base.name
+        old.metadata.base.name, new.metadata.base.name
     ))?;
     writer.blank_line();
 
