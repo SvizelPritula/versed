@@ -6,11 +6,15 @@ use crate::{
     metadata::GetIdentity,
     rust::{
         RustMetadata, RustOptions,
-        codegen::{self, all_rust_type_names},
+        codegen::{self, NamingContext, all_rust_type_names},
     },
 };
 
-type Context<'a> = codegen::Context<'a, RustMetadata>;
+#[derive(Debug, Clone, Copy)]
+struct Context<'a> {
+    pub naming: NamingContext<'a, RustMetadata>,
+    pub options: &'a RustOptions,
+}
 
 pub fn emit_types(
     writer: &mut SourceWriter<impl Write>,
@@ -20,9 +24,11 @@ pub fn emit_types(
     let used_type_names = all_rust_type_names(types, GetIdentity);
 
     let context = Context {
-        types,
+        naming: NamingContext {
+            types,
+            used_type_names: &used_type_names,
+        },
         options,
-        used_type_names: &used_type_names,
     };
 
     if context.options.serde {
@@ -176,7 +182,7 @@ fn write_type_name(
 ) -> Result<()> {
     codegen::write_type_name(
         writer,
-        context,
+        context.naming,
         r#type,
         r#box,
         format_args!(""),

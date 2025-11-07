@@ -12,13 +12,17 @@ use crate::{
     codegen::{idents::IdentRules, source_writer::SourceWriter},
     metadata::Metadata,
     migrations::TypePair,
-    rust::{GetBase, RustMigrationMetadata, RustOptions, codegen, idents::RustIdentRules},
+    rust::{
+        GetBase, RustMigrationMetadata,
+        codegen::{self, NamingContext},
+        idents::RustIdentRules,
+    },
 };
 
 #[derive(Debug, Clone, Copy)]
 pub struct Context<'a> {
-    old: codegen::Context<'a, RustMigrationMetadata>,
-    new: codegen::Context<'a, RustMigrationMetadata>,
+    old: NamingContext<'a, RustMigrationMetadata>,
+    new: NamingContext<'a, RustMigrationMetadata>,
     direction: &'static str,
 }
 
@@ -76,17 +80,13 @@ fn emit_directional_migration(
     pairs: &[TypePair<RustMigrationMetadata>],
     direction: &'static str,
 ) -> Result<()> {
-    let options = RustOptions::default();
-
     let context = Context {
-        old: codegen::Context {
+        old: codegen::NamingContext {
             types: old,
-            options: &options,
             used_type_names: &HashSet::new(),
         },
-        new: codegen::Context {
+        new: codegen::NamingContext {
             types: new,
-            options: &options,
             used_type_names: &HashSet::new(),
         },
         direction,
@@ -393,7 +393,7 @@ impl Display for FunctionName<'_> {
 
 fn write_type_name(
     writer: &mut SourceWriter<impl Write>,
-    context: codegen::Context<RustMigrationMetadata>,
+    context: codegen::NamingContext<RustMigrationMetadata>,
     r#type: &Type<RustMigrationMetadata>,
     r#box: bool,
 ) -> Result<()> {

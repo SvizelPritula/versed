@@ -8,24 +8,23 @@ use crate::{
     ast::{PrimitiveType, Type, TypeSet, TypeType},
     codegen::source_writer::SourceWriter,
     metadata::{GetMetadata, Metadata},
-    rust::{RustMetadata, RustOptions},
+    rust::RustMetadata,
 };
 
 #[derive(Debug)]
-pub struct Context<'a, M: Metadata> {
+pub struct NamingContext<'a, M: Metadata> {
     pub types: &'a TypeSet<M>,
-    pub options: &'a RustOptions,
     pub used_type_names: &'a HashSet<&'a str>,
 }
 
-impl<'a, M: Metadata> Copy for Context<'a, M> {}
-impl<'a, M: Metadata> Clone for Context<'a, M> {
+impl<'a, M: Metadata> Copy for NamingContext<'a, M> {}
+impl<'a, M: Metadata> Clone for NamingContext<'a, M> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<'a, M: Metadata> Context<'a, M> {
+impl<'a, M: Metadata> NamingContext<'a, M> {
     pub fn rust_type<'b>(&'a self, name: &'b str, fallback: &'b str) -> &'b str {
         if self.used_type_names.contains(name) {
             fallback
@@ -37,7 +36,7 @@ impl<'a, M: Metadata> Context<'a, M> {
 
 pub fn write_type_name<M, GM, W>(
     writer: &mut SourceWriter<W>,
-    context: Context<M>,
+    context: NamingContext<M>,
     r#type: &Type<M>,
     r#box: bool,
     self_path: fmt::Arguments,
