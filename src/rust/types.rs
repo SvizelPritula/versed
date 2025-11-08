@@ -100,7 +100,7 @@ fn emit_struct(
         writer.write("pub ")?;
         writer.write(&field.metadata.name)?;
         writer.write(": ")?;
-        write_type_name(writer, context, &field.r#type, field.metadata.r#box)?;
+        write_type_name(writer, context, &field.r#type)?;
         writer.write_nl(",")?;
     }
 
@@ -136,7 +136,7 @@ fn emit_enum(
 
         writer.write(&variant.metadata.name)?;
         writer.write("(")?;
-        write_type_name(writer, context, &variant.r#type, variant.metadata.r#box)?;
+        write_type_name(writer, context, &variant.r#type)?;
         writer.write_nl("),")?;
     }
 
@@ -161,13 +161,13 @@ fn emit_type_alias(
         writer.write("pub struct ")?;
         writer.write(&r#type.r#type.metadata.name)?;
         writer.write("(pub ")?;
-        write_type_name(writer, context, &r#type.r#type, r#type.metadata.r#box)?;
+        write_type_name(writer, context, &r#type.r#type)?;
         writer.write_nl(");")?;
     } else {
         writer.write("pub type ")?;
         writer.write(&r#type.r#type.metadata.name)?;
         writer.write(" = ")?;
-        write_type_name(writer, context, &r#type.r#type, r#type.metadata.r#box)?;
+        write_type_name(writer, context, &r#type.r#type)?;
         writer.write_nl(";")?;
     }
 
@@ -178,13 +178,11 @@ fn write_type_name(
     writer: &mut SourceWriter<impl Write>,
     context: Context,
     r#type: &Type<RustMetadata>,
-    r#box: bool,
 ) -> Result<()> {
     codegen::write_type_name(
         writer,
         context.naming,
         r#type,
-        r#box,
         format_args!(""),
         GetIdentity,
     )

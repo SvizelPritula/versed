@@ -30,10 +30,10 @@ pub fn mark_boxes(types: &mut TypeSet<RustMetadata>) {
         context.enqueue(source);
 
         while let Some(idx) = context.queue.pop_front() {
-            let r#type = &mut types.types[idx];
+            let r#type = &mut types.types[idx].r#type;
 
             if !r#type.metadata.r#box {
-                r#type.metadata.r#box |= process_type(&mut r#type.r#type, &mut context);
+                r#type.metadata.r#box |= process_type(r#type, &mut context);
             }
         }
     }
@@ -43,8 +43,9 @@ fn process_type(r#type: &mut Type<RustMetadata>, context: &mut BoxContext) -> bo
     match &mut r#type.r#type {
         TypeType::Struct(r#struct) => {
             for field in &mut r#struct.fields {
-                if !field.metadata.r#box {
-                    field.metadata.r#box |= process_type(&mut field.r#type, context);
+                let r#type = &mut field.r#type;
+                if !r#type.metadata.r#box {
+                    r#type.metadata.r#box |= process_type(r#type, context);
                 }
             }
 
@@ -52,8 +53,9 @@ fn process_type(r#type: &mut Type<RustMetadata>, context: &mut BoxContext) -> bo
         }
         TypeType::Enum(r#enum) => {
             for variant in &mut r#enum.variants {
-                if !variant.metadata.r#box {
-                    variant.metadata.r#box |= process_type(&mut variant.r#type, context);
+                let r#type = &mut variant.r#type;
+                if !r#type.metadata.r#box {
+                    r#type.metadata.r#box |= process_type(r#type, context);
                 }
             }
 
@@ -125,9 +127,9 @@ fn has_type_reference_through_alias(
 pub struct BoxMetadata;
 
 impl Metadata for BoxMetadata {
-    type Type = ();
+    type Type = bool;
     type TypeSet = ();
-    type Named = bool;
+    type Named = ();
 
     type Struct = ();
     type Enum = ();
@@ -135,8 +137,8 @@ impl Metadata for BoxMetadata {
     type Primitive = ();
     type Identifier = ();
 
-    type Field = bool;
-    type Variant = bool;
+    type Field = ();
+    type Variant = ();
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -30,8 +30,7 @@ fn compile_schema(dir: &Path, name: &str, content: &str) {
 }
 
 fn check(old: &str, new: &str) {
-    let mut dir = tempdir().unwrap();
-    dir.disable_cleanup(true);
+    let dir = tempdir().unwrap();
 
     let mod_path = dir.path().join("mod.rs");
     fs::write(&mod_path, MOD_CONTENT).unwrap();
@@ -372,7 +371,6 @@ fn change_boxedness_enum() {
 }
 
 #[test]
-#[ignore = "boxed aliases not yet implemented for migrations"]
 fn change_boxedness_alias() {
     check(
         indoc! {r#"

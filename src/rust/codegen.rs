@@ -38,7 +38,6 @@ pub fn write_type_name<M, GM, W>(
     writer: &mut SourceWriter<W>,
     context: NamingContext<M>,
     r#type: &Type<M>,
-    r#box: bool,
     self_path: fmt::Arguments,
     get: GM,
 ) -> Result<()>
@@ -47,7 +46,8 @@ where
     W: Write,
     GM: GetMetadata<M, RustMetadata>,
 {
-    if r#box {
+    let metadata = get.get_type(&r#type.metadata);
+    if metadata.r#box {
         writer.write(context.rust_type("Box", "::std::boxed::Box"))?;
         writer.write("<")?;
     }
@@ -55,12 +55,12 @@ where
     match &r#type.r#type {
         TypeType::Struct(_) | TypeType::Enum(_) => {
             writer.write_fmt(self_path)?;
-            writer.write(&get.get_type(&r#type.metadata).name)?
+            writer.write(&metadata.name)?
         }
         TypeType::List(list) => {
             writer.write(context.rust_type("Vec", "::std::vec::Vec"))?;
             writer.write("<")?;
-            write_type_name(writer, context, &list.r#type, false, self_path, get)?;
+            write_type_name(writer, context, &list.r#type, self_path, get)?;
             writer.write(">")?;
         }
         TypeType::Primitive(primitive) => {
@@ -78,7 +78,7 @@ where
         }
     }
 
-    if r#box {
+    if metadata.r#box {
         writer.write(">")?;
     }
 

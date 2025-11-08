@@ -10,7 +10,6 @@ use crate::{
         Variant,
     },
     codegen::{idents::IdentRules, source_writer::SourceWriter},
-    metadata::Metadata,
     migrations::TypePair,
     rust::{
         GetBase, RustMigrationMetadata,
@@ -45,6 +44,45 @@ impl<'a> Context<'a> {
             .strip_prefix(RustIdentRules.reserved_prefix())
             .unwrap_or(name);
         FunctionName(self.direction, name)
+    }
+}
+
+struct FunctionName<'a>(&'a str, &'a str);
+
+impl Display for FunctionName<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let FunctionName(prefix, suffix) = self;
+        write!(f, "{prefix}_{suffix}")
+    }
+}
+
+struct WithMetadata<'a, T> {
+    r#type: &'a T,
+    full: &'a Type<RustMigrationMetadata>,
+}
+
+struct GenericPair<'a, T> {
+    old: WithMetadata<'a, T>,
+    new: WithMetadata<'a, T>,
+}
+
+impl<'a, T> GenericPair<'a, T> {
+    fn new(
+        old: &'a T,
+        new: &'a T,
+        old_full: &'a Type<RustMigrationMetadata>,
+        new_full: &'a Type<RustMigrationMetadata>,
+    ) -> Self {
+        Self {
+            old: WithMetadata {
+                r#type: old,
+                full: old_full,
+            },
+            new: WithMetadata {
+                r#type: new,
+                full: new_full,
+            },
+        }
     }
 }
 
@@ -118,15 +156,16 @@ fn emit_function(
 ) -> Result<()> {
     writer.write_fmt(format_args!("pub fn {}(", context.function_to(pair.new)))?;
 
-    writer.write_fmt(format_args!("{}: ", pair.old.metadata.migration_name))?;
-    write_type_name(writer, context.old, pair.old, false)?;
+    let expr = pair.old.metadata.migration_name.as_str();
+    writer.write_fmt(format_args!("{}: ", expr))?;
+    write_type_name(writer, context.old, pair.old)?;
 
     writer.write(") -> ")?;
-    write_type_name(writer, context.new, pair.new, false)?;
+    write_type_name(writer, context.new, pair.new)?;
     writer.write_nl(" {")?;
     writer.indent();
 
-    emit_body(writer, context, pair)?;
+    emit_body(writer, context, pair, format_args!("{expr}"))?;
 
     writer.dedent();
     writer.write_nl("}")?;
@@ -139,83 +178,66 @@ fn emit_body(
     writer: &mut SourceWriter<impl Write>,
     context: Context,
     pair: TypePair<RustMigrationMetadata>,
+    expr: fmt::Arguments,
 ) -> Result<()> {
+    if pair.new.metadata.base.r#box {
+        writer.write("Box::new(")?;
+    }
+
+    let expr = if pair.old.metadata.base.r#box {
+        format_args!("(*{expr})")
+    } else {
+        expr
+    };
+
     match (&pair.old.r#type, &pair.new.r#type) {
         (TypeType::Struct(old), TypeType::Struct(new)) => emit_struct(
             writer,
             context,
             GenericPair::new(old, new, pair.old, pair.new),
+            expr,
         )?,
         (TypeType::Enum(old), TypeType::Enum(new)) => emit_enum(
             writer,
             context,
             GenericPair::new(old, new, pair.old, pair.new),
+            expr,
         )?,
         (TypeType::List(old), TypeType::List(new)) => emit_list(
             writer,
             context,
             GenericPair::new(old, new, pair.old, pair.new),
+            expr,
         )?,
         (TypeType::Primitive(old), TypeType::Primitive(new)) => emit_primitive(
             writer,
             context,
             GenericPair::new(old, new, pair.old, pair.new),
+            expr,
         )?,
         (TypeType::Identifier(old), TypeType::Identifier(new)) => emit_identifier(
             writer,
             context,
             GenericPair::new(old, new, pair.old, pair.new),
+            expr,
         )?,
         (_old, _new) => write_todo(writer)?,
     }
 
+    if pair.new.metadata.base.r#box {
+        writer.write(")")?;
+    }
+
     Ok(())
-}
-
-struct WithMetadata<'a, T> {
-    r#type: &'a T,
-    full: &'a Type<RustMigrationMetadata>,
-}
-
-impl<T> WithMetadata<'_, T> {
-    pub fn metadata(&self) -> &<RustMigrationMetadata as Metadata>::Type {
-        &self.full.metadata
-    }
-}
-
-struct GenericPair<'a, T> {
-    old: WithMetadata<'a, T>,
-    new: WithMetadata<'a, T>,
-}
-
-impl<'a, T> GenericPair<'a, T> {
-    fn new(
-        old: &'a T,
-        new: &'a T,
-        old_full: &'a Type<RustMigrationMetadata>,
-        new_full: &'a Type<RustMigrationMetadata>,
-    ) -> Self {
-        Self {
-            old: WithMetadata {
-                r#type: old,
-                full: old_full,
-            },
-            new: WithMetadata {
-                r#type: new,
-                full: new_full,
-            },
-        }
-    }
 }
 
 fn emit_struct(
     writer: &mut SourceWriter<impl Write>,
     context: Context,
     GenericPair { old, new }: GenericPair<Struct<RustMigrationMetadata>>,
+    expr: fmt::Arguments,
 ) -> Result<()> {
-    let arg = &old.metadata().migration_name;
-
-    write_type_name(writer, context.new, new.full, false)?;
+    write_type_name(writer, context.new, new.full)?;
     writer.write_nl(" {")?;
     writer.indent();
 
@@ -235,10 +257,8 @@ fn emit_struct(
             write_upgrade(
                 writer,
                 context,
-                format_args!("{arg}.{field_name}"),
+                format_args!("{expr}.{field_name}"),
                 &field.r#type,
-                old_field.metadata.base.r#box,
-                field.metadata.base.r#box,
             )?;
         } else {
             writer.write(TODO)?;
@@ -257,10 +277,9 @@ fn emit_enum(
     writer: &mut SourceWriter<impl Write>,
     context: Context,
     GenericPair { old, new }: GenericPair<Enum<RustMigrationMetadata>>,
+    expr: fmt::Arguments,
 ) -> Result<()> {
-    let arg = &old.metadata().migration_name;
-
-    writer.write_fmt_nl(format_args!("match {arg} {{"))?;
+    writer.write_fmt_nl(format_args!("match {expr} {{"))?;
     writer.indent();
 
     let by_type_number: HashMap<u64, &Variant<RustMigrationMetadata>> = new
@@ -273,7 +292,7 @@ fn emit_enum(
     for variant in &old.r#type.variants {
         let binding = &variant.metadata.migration_name;
 
-        write_type_name(writer, context.old, old.full, false)?;
+        write_type_name(writer, context.old, old.full)?;
         writer.write_fmt(format_args!(
             "::{}({binding}) => ",
             variant.metadata.base.name
@@ -282,15 +301,13 @@ fn emit_enum(
         if let Some(&new_variant) = variant.r#type.number.and_then(|n| by_type_number.get(&n)) {
             let variant_name = &new_variant.metadata.base.name;
 
-            write_type_name(writer, context.new, new.full, false)?;
+            write_type_name(writer, context.new, new.full)?;
             writer.write_fmt(format_args!("::{variant_name}("))?;
             write_upgrade(
                 writer,
                 context,
                 format_args!("{binding}"),
                 &new_variant.r#type,
-                variant.metadata.base.r#box,
-                new_variant.metadata.base.r#box,
             )?;
             writer.write(")")?;
         } else {
@@ -310,11 +327,10 @@ fn emit_list(
     writer: &mut SourceWriter<impl Write>,
     context: Context,
     GenericPair { old, new }: GenericPair<List<RustMigrationMetadata>>,
+    expr: fmt::Arguments,
 ) -> Result<()> {
-    let arg = &old.metadata().migration_name;
-
     if let Some(func) = context.function_between(&old.r#type.r#type, &new.r#type.r#type) {
-        writer.write_fmt_nl(format_args!("{arg}.into_iter().map({func}).collect()"))
+        writer.write_fmt_nl(format_args!("{expr}.into_iter().map({func}).collect()"))
     } else {
         write_todo(writer)
     }
@@ -324,9 +340,10 @@ fn emit_primitive(
     writer: &mut SourceWriter<impl Write>,
     _context: Context,
     GenericPair { old, new }: GenericPair<Primitive<RustMigrationMetadata>>,
+    expr: fmt::Arguments,
 ) -> Result<()> {
     if old.r#type.r#type == new.r#type.r#type {
-        writer.write_nl(&old.metadata().migration_name)
+        writer.write_fmt_nl(expr)
     } else {
         write_todo(writer)
     }
@@ -336,13 +353,13 @@ fn emit_identifier(
     writer: &mut SourceWriter<impl Write>,
     context: Context,
     GenericPair { old, new }: GenericPair<Identifier<RustMigrationMetadata>>,
+    expr: fmt::Arguments,
 ) -> Result<()> {
     let old_ref = &context.old.types.types[old.r#type.metadata.base.resolution];
     let new_ref = &context.new.types.types[new.r#type.metadata.base.resolution];
-    let arg = &old.metadata().migration_name;
 
     if let Some(func) = context.function_between(&old_ref.r#type, &new_ref.r#type) {
-        writer.write_fmt_nl(format_args!("{func}({arg})"))
+        writer.write_fmt_nl(format_args!("{func}({expr})"))
     } else {
         write_todo(writer)
     }
@@ -352,28 +369,13 @@ fn write_upgrade(
     writer: &mut SourceWriter<impl Write>,
     context: Context,
     binding: Arguments,
-    to_type: &Type<RustMigrationMetadata>,
-    old_boxed: bool,
-    new_boxed: bool,
+    new: &Type<RustMigrationMetadata>,
 ) -> Result<()> {
-    let func = context.function_to(to_type);
-
-    if new_boxed {
-        writer.write("Box::new(")?;
-    }
+    let func = context.function_to(new);
 
     writer.write_fmt(format_args!("{func}("))?;
-
-    if old_boxed {
-        writer.write("*")?;
-    }
-
     writer.write_fmt(binding)?;
     writer.write(")")?;
-
-    if new_boxed {
-        writer.write(")")?;
-    }
 
     Ok(())
 }
@@ -382,26 +384,15 @@ fn write_todo(writer: &mut SourceWriter<impl Write>) -> Result<()> {
     writer.write_nl(TODO)
 }
 
-struct FunctionName<'a>(&'a str, &'a str);
-
-impl Display for FunctionName<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let FunctionName(prefix, suffix) = self;
-        write!(f, "{prefix}_{suffix}")
-    }
-}
-
 fn write_type_name(
     writer: &mut SourceWriter<impl Write>,
     context: codegen::NamingContext<RustMigrationMetadata>,
     r#type: &Type<RustMigrationMetadata>,
-    r#box: bool,
 ) -> Result<()> {
     codegen::write_type_name(
         writer,
         context,
         r#type,
-        r#box,
         format_args!("{}::", context.types.metadata.base.name),
         GetBase,
     )
