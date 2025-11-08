@@ -92,7 +92,7 @@ pub fn mark_newtypes(types: &mut TypeSet<RustMetadata>) {
         context.visited.insert(source);
 
         let result = has_type_reference_through_alias(&types.types[source].r#type, &mut context);
-        types.types[source].metadata.newtype = result;
+        types.types[source].r#type.metadata.newtype = result;
     }
 }
 
@@ -111,10 +111,10 @@ fn has_type_reference_through_alias(
             if index == context.source {
                 true
             } else {
-                let r#type = &context.types.types[index];
+                let r#type = &context.types.types[index].r#type;
 
                 if !r#type.metadata.newtype && context.visited.insert(index) {
-                    has_type_reference_through_alias(&r#type.r#type, context)
+                    has_type_reference_through_alias(r#type, context)
                 } else {
                     false
                 }
@@ -145,9 +145,9 @@ impl Metadata for BoxMetadata {
 pub struct NewtypeMetadata;
 
 impl Metadata for NewtypeMetadata {
-    type Type = ();
+    type Type = bool;
     type TypeSet = ();
-    type Named = bool;
+    type Named = ();
 
     type Struct = ();
     type Enum = ();

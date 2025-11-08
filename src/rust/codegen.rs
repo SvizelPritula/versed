@@ -39,6 +39,7 @@ pub fn write_type_name<M, GM, W>(
     context: NamingContext<M>,
     r#type: &Type<M>,
     self_path: fmt::Arguments,
+    inspect_newtypes: bool,
     get: GM,
 ) -> Result<()>
 where
@@ -47,6 +48,13 @@ where
     GM: GetMetadata<M, RustMetadata>,
 {
     let metadata = get.get_type(&r#type.metadata);
+
+    if metadata.newtype && !inspect_newtypes {
+        writer.write_fmt(self_path)?;
+        writer.write(&metadata.name)?;
+        return Ok(());
+    }
+
     if metadata.r#box {
         writer.write(context.rust_type("Box", "::std::boxed::Box"))?;
         writer.write("<")?;
@@ -60,7 +68,14 @@ where
         TypeType::List(list) => {
             writer.write(context.rust_type("Vec", "::std::vec::Vec"))?;
             writer.write("<")?;
-            write_type_name(writer, context, &list.r#type, self_path, get)?;
+            write_type_name(
+                writer,
+                context,
+                &list.r#type,
+                self_path,
+                inspect_newtypes,
+                get,
+            )?;
             writer.write(">")?;
         }
         TypeType::Primitive(primitive) => {

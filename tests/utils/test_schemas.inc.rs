@@ -275,7 +275,6 @@ mod recursive {
     }
 
     #[test]
-    #[ignore = "newtype aliases not yet implemented for migrations"]
     fn recursive_alias() {
         check(indoc! {"
             version v1;
@@ -286,7 +285,6 @@ mod recursive {
     }
 
     #[test]
-    #[ignore = "newtype aliases not yet implemented for migrations"]
     fn self_alias() {
         check(indoc! {"
             version v1;
@@ -296,7 +294,6 @@ mod recursive {
     }
 
     #[test]
-    #[ignore = "newtype aliases not yet implemented for migrations"]
     fn mutual_alias() {
         check(indoc! {"
             version v1;
@@ -308,7 +305,6 @@ mod recursive {
     }
 
     #[test]
-    #[ignore = "newtype aliases not yet implemented for migrations"]
     fn alias_to_self_alias() {
         check(indoc! {"
             version v1;

@@ -152,6 +152,8 @@ fn emit_type_alias(
     context: Context,
     r#type: &NamedType<RustMetadata>,
 ) -> Result<()> {
+    let r#type = &r#type.r#type;
+
     if r#type.metadata.newtype {
         write_derive(writer, context)?;
         if context.options.serde {
@@ -159,15 +161,15 @@ fn emit_type_alias(
         }
 
         writer.write("pub struct ")?;
-        writer.write(&r#type.r#type.metadata.name)?;
+        writer.write(&r#type.metadata.name)?;
         writer.write("(pub ")?;
-        write_type_name(writer, context, &r#type.r#type)?;
+        write_type_name(writer, context, &r#type)?;
         writer.write_nl(");")?;
     } else {
         writer.write("pub type ")?;
-        writer.write(&r#type.r#type.metadata.name)?;
+        writer.write(&r#type.metadata.name)?;
         writer.write(" = ")?;
-        write_type_name(writer, context, &r#type.r#type)?;
+        write_type_name(writer, context, &r#type)?;
         writer.write_nl(";")?;
     }
 
@@ -184,6 +186,7 @@ fn write_type_name(
         context.naming,
         r#type,
         format_args!(""),
+        true,
         GetIdentity,
     )
 }

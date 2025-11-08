@@ -180,9 +180,22 @@ fn emit_body(
     pair: TypePair<RustMigrationMetadata>,
     expr: fmt::Arguments,
 ) -> Result<()> {
-    if pair.new.metadata.base.r#box {
-        writer.write("Box::new(")?;
+    if pair.new.metadata.base.newtype {
+        write_type_name(writer, context.new, pair.new)?;
+        writer.write_nl("(")?;
+        writer.indent();
     }
+
+    if pair.new.metadata.base.r#box {
+        writer.write_nl("Box::new(")?;
+        writer.indent();
+    }
+
+    let expr = if pair.old.metadata.base.newtype {
+        format_args!("{expr}.0")
+    } else {
+        expr
+    };
 
     let expr = if pair.old.metadata.base.r#box {
         format_args!("(*{expr})")
@@ -225,7 +238,13 @@ fn emit_body(
     }
 
     if pair.new.metadata.base.r#box {
-        writer.write(")")?;
+        writer.dedent();
+        writer.write_nl(")")?;
+    }
+
+    if pair.new.metadata.base.newtype {
+        writer.dedent();
+        writer.write_nl(")")?;
     }
 
     Ok(())
@@ -394,6 +413,7 @@ fn write_type_name(
         context,
         r#type,
         format_args!("{}::", context.types.metadata.base.name),
+        false,
         GetBase,
     )
 }
