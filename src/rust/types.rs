@@ -32,7 +32,7 @@ pub fn emit_types(
     };
 
     if context.options.serde {
-        writer.write_nl(r#"use serde::{Deserialize, Serialize};"#)?;
+        writer.write_nl(r"use serde::{Deserialize, Serialize};")?;
         writer.blank_line();
     }
 
@@ -163,13 +163,13 @@ fn emit_type_alias(
         writer.write("pub struct ")?;
         writer.write(&r#type.metadata.name)?;
         writer.write("(pub ")?;
-        write_type_name(writer, context, &r#type)?;
+        write_type_name(writer, context, r#type)?;
         writer.write_nl(");")?;
     } else {
         writer.write("pub type ")?;
         writer.write(&r#type.metadata.name)?;
         writer.write(" = ")?;
-        write_type_name(writer, context, &r#type)?;
+        write_type_name(writer, context, r#type)?;
         writer.write_nl(";")?;
     }
 

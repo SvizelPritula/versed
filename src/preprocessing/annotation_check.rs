@@ -34,10 +34,7 @@ pub fn check_annotations<'filename>(
     }
 }
 
-fn check_type<'types, 'f, 'r>(
-    r#type: &'types Type<BasicMetadata>,
-    context: &mut Context<'types, 'f, 'r>,
-) {
+fn check_type<'types>(r#type: &'types Type<BasicMetadata>, context: &mut Context<'types, '_, '_>) {
     if let Some(number) = r#type.number {
         match context.used.entry(number) {
             Entry::Occupied(entry) => context.reports.add_fatal(make_report(

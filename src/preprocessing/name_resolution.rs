@@ -56,7 +56,7 @@ pub fn resolve_names<'filename>(
                     span: r#type.metadata.name,
                 });
             }
-        };
+        }
     }
 
     let types = types
@@ -246,7 +246,7 @@ fn check_unique<'a, 'filename>(
             Entry::Vacant(entry) => {
                 entry.insert(span);
             }
-        };
+        }
     }
 }
 

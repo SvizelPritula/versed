@@ -118,12 +118,12 @@ fn strip_annotations_in_type(r#type: &Type<BasicMetadata>, edits: &mut Vec<Remov
     match &r#type.r#type {
         TypeType::Struct(r#struct) => {
             for field in &r#struct.fields {
-                strip_annotations_in_type(&field.r#type, edits)
+                strip_annotations_in_type(&field.r#type, edits);
             }
         }
         TypeType::Enum(r#enum) => {
             for variant in &r#enum.variants {
-                strip_annotations_in_type(&variant.r#type, edits)
+                strip_annotations_in_type(&variant.r#type, edits);
             }
         }
         TypeType::List(list) => strip_annotations_in_type(&list.r#type, edits),

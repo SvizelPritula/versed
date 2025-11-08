@@ -11,21 +11,14 @@ use crate::{
     rust::RustMetadata,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct NamingContext<'a, M: Metadata> {
     pub types: &'a TypeSet<M>,
     pub used_type_names: &'a HashSet<&'a str>,
 }
 
-impl<'a, M: Metadata> Copy for NamingContext<'a, M> {}
-impl<'a, M: Metadata> Clone for NamingContext<'a, M> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<'a, M: Metadata> NamingContext<'a, M> {
-    pub fn rust_type<'b>(&'a self, name: &'b str, fallback: &'b str) -> &'b str {
+impl<M: Metadata> NamingContext<'_, M> {
+    pub fn rust_type<'b>(&self, name: &'b str, fallback: &'b str) -> &'b str {
         if self.used_type_names.contains(name) {
             fallback
         } else {
@@ -63,7 +56,7 @@ where
     match &r#type.r#type {
         TypeType::Struct(_) | TypeType::Enum(_) => {
             writer.write_fmt(self_path)?;
-            writer.write(&metadata.name)?
+            writer.write(&metadata.name)?;
         }
         TypeType::List(list) => {
             writer.write(context.rust_type("Vec", "::std::vec::Vec"))?;
@@ -89,7 +82,7 @@ where
             let index = get.get_identifier(&identifier.metadata).resolution;
             let r#type = &context.types.types[index].r#type;
             writer.write_fmt(self_path)?;
-            writer.write(&get.get_type(&r#type.metadata).name)?
+            writer.write(&get.get_type(&r#type.metadata).name)?;
         }
     }
 

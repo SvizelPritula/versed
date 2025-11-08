@@ -73,7 +73,7 @@ pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<Spanned<Token>>, extra:
                         "control character with code 0x{:x} found in quoted identifier",
                         c as u32
                     ),
-                ))
+                ));
             }
 
             c

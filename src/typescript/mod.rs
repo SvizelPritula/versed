@@ -39,7 +39,7 @@ fn write_to_directory(types: &TypeSet<TypeScriptMetadata>, path: &Path) -> Resul
     create_dir_all(path)?;
     let mod_name = &types.metadata.name;
 
-    let type_path = path.join(format!("{}.ts", mod_name));
+    let type_path = path.join(format!("{mod_name}.ts"));
     write_to_file(types, &type_path, true)?;
 
     let index_path = path.join("index.ts");

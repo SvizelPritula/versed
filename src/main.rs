@@ -218,7 +218,7 @@ fn main() -> ExitCode {
             match print_all_reports(&reports, &filename, &new_src) {
                 Ok(()) => {}
                 Err(code) => return code,
-            };
+            }
 
             handle_io_result(migrations::finish(
                 &new_types,
@@ -344,11 +344,7 @@ fn load_migration(file: &Path) -> Result<Migration<BasicMetadata>, ExitCode> {
     }
 }
 
-fn print_all_reports<'filename>(
-    reports: &Reports<'filename>,
-    filename: &str,
-    src: &str,
-) -> Result<(), ExitCode> {
+fn print_all_reports(reports: &Reports, filename: &str, src: &str) -> Result<(), ExitCode> {
     if reports.has_any() {
         let mut stream = BufWriter::new(stderr().lock());
         let mut cache = (filename, Source::from(src));
@@ -362,9 +358,9 @@ fn print_all_reports<'filename>(
         }
     }
 
-    if !reports.has_fatal() {
-        Ok(())
-    } else {
+    if reports.has_fatal() {
         Err(ExitCode::from(exit_codes::MALFORMED_FILE))
+    } else {
+        Ok(())
     }
 }

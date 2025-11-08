@@ -157,7 +157,7 @@ fn emit_function(
     writer.write_fmt(format_args!("pub fn {}(", context.function_to(pair.new)))?;
 
     let expr = pair.old.metadata.migration_name.as_str();
-    writer.write_fmt(format_args!("{}: ", expr))?;
+    writer.write_fmt(format_args!("{expr}: "))?;
     write_type_name(writer, context.old, pair.old)?;
 
     writer.write(") -> ")?;
@@ -264,7 +264,7 @@ fn emit_struct(
         .r#type
         .fields
         .iter()
-        .flat_map(|field| field.r#type.number.map(|number| (number, field)))
+        .filter_map(|field| field.r#type.number.map(|number| (number, field)))
         .collect();
 
     for field in &new.r#type.fields {
@@ -305,7 +305,7 @@ fn emit_enum(
         .r#type
         .variants
         .iter()
-        .flat_map(|variant| variant.r#type.number.map(|number| (number, variant)))
+        .filter_map(|variant| variant.r#type.number.map(|number| (number, variant)))
         .collect();
 
     for variant in &old.r#type.variants {

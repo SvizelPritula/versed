@@ -57,7 +57,7 @@ fn number<'tokens, I: Input<'tokens>>() -> Parser![Option<u64>] {
     }
     .validate(|digits, e, emitter| match u64::from_str(&digits) {
         Ok(n) => Some(n),
-        Err(_) => {
+        Err(_error) => {
             // The only possible error kind should be PosOverflow
             emitter.emit(Rich::custom(
                 e.span(),

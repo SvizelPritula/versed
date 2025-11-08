@@ -5,22 +5,13 @@ use crate::{
     metadata::Metadata,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct TypePair<'types, M: Metadata> {
     pub old: &'types Type<M>,
     pub new: &'types Type<M>,
 }
 
-impl<'types, M: Metadata> Copy for TypePair<'types, M> {}
-impl<'types, M: Metadata> Clone for TypePair<'types, M> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-pub fn pair_types<'types, M: Metadata>(
-    migration: &'types Migration<M>,
-) -> Vec<TypePair<'types, M>> {
+pub fn pair_types<M: Metadata>(migration: &'_ Migration<M>) -> Vec<TypePair<'_, M>> {
     type Element<'types, M> = (Option<&'types Type<M>>, Option<&'types Type<M>>);
     let mut map: HashMap<u64, Element<M>> = HashMap::new();
 
@@ -29,7 +20,7 @@ pub fn pair_types<'types, M: Metadata>(
 
     let mut vec = map
         .into_iter()
-        .flat_map(|(number, (old, new))| {
+        .filter_map(|(number, (old, new))| {
             old.zip(new)
                 .map(|(old, new)| (number, TypePair { old, new }))
         })
@@ -57,7 +48,7 @@ where
     F: Fn(&mut E, &'types Type<M>) + Copy,
 {
     if let Some(number) = r#type.number {
-        set(map.entry(number).or_default(), r#type)
+        set(map.entry(number).or_default(), r#type);
     }
 
     match &r#type.r#type {

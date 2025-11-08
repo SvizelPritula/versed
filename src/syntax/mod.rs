@@ -32,7 +32,11 @@ where
     P: ParserFactory<O>,
 {
     let (tokens, errors) = lexer().parse(src).into_output_errors();
-    reports.extend_fatal(errors.into_iter().map(|error| make_report(error, filename)));
+    reports.extend_fatal(
+        errors
+            .into_iter()
+            .map(|error| make_report(&error, filename)),
+    );
 
     if let Some(tokens) = tokens {
         let tokens = tokens
@@ -40,7 +44,11 @@ where
             .map((src.len()..src.len()).into(), |(t, s)| (t, s));
 
         let (ast, errors) = parser.make().parse(tokens).into_output_errors();
-        reports.extend_fatal(errors.into_iter().map(|error| make_report(error, filename)));
+        reports.extend_fatal(
+            errors
+                .into_iter()
+                .map(|error| make_report(&error, filename)),
+        );
 
         ast
     } else {
@@ -90,8 +98,8 @@ trait ParserFactory<O> {
     ) -> impl Parser<'tokens, I, O, extra::Err<Error<'tokens>>>;
 }
 
-fn make_report<'src, 'tokens, T: Display>(
-    error: Rich<'src, T>,
+fn make_report<'tokens, T: Display>(
+    error: &Rich<T>,
     filename: &'tokens str,
 ) -> Report<'static, (&'tokens str, Range<usize>)> {
     Report::build(ReportKind::Error, (filename, error.span().into_range()))
