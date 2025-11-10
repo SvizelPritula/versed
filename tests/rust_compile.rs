@@ -49,7 +49,7 @@ fn rust_type_idents() {
             vec: struct {}
         };
 
-        Struct = struct {
+        Option = struct {
             a: string,
             b: [int],
         };

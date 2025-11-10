@@ -215,6 +215,30 @@ mod tricky_names {
     }
 
     #[test]
+    fn type_named_like_version() {
+        check(indoc! {"
+            version v1;
+
+            v1 = struct {
+                v2: v2,
+            };
+
+            v2 = [v2];
+        "});
+    }
+
+    #[test]
+    fn type_named_like_migration_function() {
+        check(indoc! {"
+            version v1;
+
+            User = string;
+            UpgradeUser = User;
+            DowngradeUser = User;
+        "});
+    }
+
+    #[test]
     fn identifier_edge_cases() {
         check(indoc! {r#"
             version v1;
