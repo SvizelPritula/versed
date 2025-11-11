@@ -239,6 +239,17 @@ mod tricky_names {
     }
 
     #[test]
+    fn type_named_like_migration_module() {
+        check(indoc! {"
+            version v1;
+
+            User = string;
+            Upgrade = User;
+            Downgrade = User;
+        "});
+    }
+
+    #[test]
     fn identifier_edge_cases() {
         check(indoc! {r#"
             version v1;

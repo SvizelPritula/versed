@@ -13,6 +13,7 @@ const MOD_CONTENT: &str = indoc! {"
     use v1 as _;
     use v2 as _;
     use migrations::v2::upgrade;
+    use migrations::v2::downgrade;
 
     fn main() {}
 "};
@@ -29,11 +30,11 @@ fn compile_schema(dir: &Path, name: &str, content: &str) {
         .run_and_check();
 }
 
-fn check(old: &str, new: &str) {
+fn check_with_mod(old: &str, new: &str, r#mod: &str) {
     let dir = tempdir().unwrap();
 
     let mod_path = dir.path().join("mod.rs");
-    fs::write(&mod_path, MOD_CONTENT).unwrap();
+    fs::write(&mod_path, r#mod).unwrap();
 
     compile_schema(dir.path(), "old", old);
     compile_schema(dir.path(), "new", new);
@@ -54,6 +55,10 @@ fn check(old: &str, new: &str) {
         .arg("--out-dir")
         .arg(dir.path())
         .run_and_check();
+}
+
+fn check(old: &str, new: &str) {
+    check_with_mod(old, new, MOD_CONTENT);
 }
 
 mod unchanged {
@@ -82,6 +87,36 @@ mod unchanged {
     }
 
     include!("utils/test_schemas.inc.rs");
+
+    #[test]
+    fn rust_type_idents() {
+        check(indoc! {r#"
+            version v1;
+
+            String = unit;
+
+            "" = struct {
+                vec: struct {}
+            };
+
+            Option = struct {
+                a: string,
+                b: [int],
+            };
+        "#});
+    }
+
+    #[test]
+    fn keyword_idents() {
+        check(indoc! {r#"
+            version v1;
+
+            "struct" = struct {
+                box: int,
+                self: int,
+            };
+        "#});
+    }
 
     #[test]
     fn complex_example() {
@@ -396,5 +431,31 @@ fn change_boxedness_alias() {
 
             reference = #4 lower;
         "#},
+    );
+}
+
+#[test]
+fn version_named_like_upgrade() {
+    check_with_mod(
+        indoc! {r#"
+            version upgrade_user;
+
+            user = #1 struct { a: #2 string };
+        "#},
+        indoc! {r#"
+            version downgrade_user;
+
+            user = #1 struct { a: #2 int };
+        "#},
+        indoc! {"
+            #![allow(unused_imports)]
+
+            use upgrade_user as _;
+            use downgrade_user as _;
+            use migrations::downgrade_user::upgrade::{upgrade_user as upgrade_user_func};
+            use migrations::downgrade_user::downgrade::{downgrade_user as downgrade_user_func};
+
+            fn main() {}
+        "},
     );
 }
