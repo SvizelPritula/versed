@@ -9,7 +9,10 @@ use crate::{
         Enum, Field, Identifier, List, Migration, Primitive, Struct, Type, TypeSet, TypeType,
         Variant,
     },
-    codegen::{idents::IdentRules, source_writer::SourceWriter},
+    codegen::{
+        idents::{IdentRules, disambiguate},
+        source_writer::SourceWriter,
+    },
     migrations::TypePair,
     rust::{
         GetBase, RustMigrationMetadata,
@@ -23,6 +26,7 @@ pub struct Context<'a> {
     old: NamingContext<'a, RustMigrationMetadata>,
     new: NamingContext<'a, RustMigrationMetadata>,
     direction: &'static str,
+    function_names: &'a HashSet<String>,
 }
 
 impl<'a> Context<'a> {
@@ -32,19 +36,29 @@ impl<'a> Context<'a> {
         new: &'a Type<RustMigrationMetadata>,
     ) -> Option<impl Display> {
         if old.number.zip(new.number).is_some_and(|(o, n)| o == n) {
-            Some(self.function_to(new))
+            Some(function_to(self.direction, new))
         } else {
             None
         }
     }
 
     fn function_to(&'a self, new: &'a Type<RustMigrationMetadata>) -> impl Display {
-        let name = &new.metadata.migration_name;
-        let name = name
-            .strip_prefix(RustIdentRules.reserved_prefix())
-            .unwrap_or(name);
-        FunctionName(self.direction, name)
+        function_to(self.direction, new)
     }
+
+    fn free_name<'b>(&'a self, base: &'b str) -> String {
+        let mut result = base.to_string();
+        disambiguate(&mut result, |name| self.function_names.contains(name));
+        result
+    }
+}
+
+fn function_to<'a>(direction: &'a str, new: &'a Type<RustMigrationMetadata>) -> impl Display {
+    let name = &new.metadata.migration_name;
+    let name = name
+        .strip_prefix(RustIdentRules.reserved_prefix())
+        .unwrap_or(name);
+    FunctionName(direction, name)
 }
 
 struct FunctionName<'a>(&'a str, &'a str);
@@ -118,6 +132,13 @@ fn emit_directional_migration(
     pairs: &[TypePair<RustMigrationMetadata>],
     direction: &'static str,
 ) -> Result<()> {
+    let mut function_names = HashSet::new();
+
+    for &pair in pairs {
+        let name = function_to(direction, pair.new);
+        function_names.insert(name.to_string());
+    }
+
     let context = Context {
         old: codegen::NamingContext {
             types: old,
@@ -128,6 +149,7 @@ fn emit_directional_migration(
             used_type_names: &HashSet::new(),
         },
         direction,
+        function_names: &function_names,
     };
 
     writer.write_fmt_nl(format_args!("pub mod {direction} {{"))?;
@@ -156,7 +178,7 @@ fn emit_function(
 ) -> Result<()> {
     writer.write_fmt(format_args!("pub fn {}(", context.function_to(pair.new)))?;
 
-    let expr = pair.old.metadata.migration_name.as_str();
+    let expr = context.free_name(&pair.old.metadata.migration_name);
     writer.write_fmt(format_args!("{expr}: "))?;
     write_type_name(writer, context.old, pair.old)?;
 
