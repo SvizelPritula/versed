@@ -13,7 +13,7 @@ use crate::{
         source_writer::SourceWriter,
     },
     composite, getter, mapper,
-    migrations::pair_types,
+    migrations::{TypePair, pair_types},
     preprocessing::{BasicMetadata, ResolutionMetadata},
     rust::{
         idents::{RustMigrationSuffixNamingRules, RustNamingRules},
@@ -86,34 +86,6 @@ pub fn generate_types(
     }
 }
 
-pub fn generate_migration(migration: Migration<BasicMetadata>, output: &Path) -> Result<()> {
-    const MIGRATION_MOD: &str = "migrations";
-
-    let migration = migration.map(convert_types_for_migration);
-    let pairs = pair_types(&migration);
-
-    let migrations_dir = output.join(MIGRATION_MOD);
-    let is_directory_new = !exists(&migrations_dir)?;
-    create_dir_all(&migrations_dir)?;
-
-    let mod_name = &migration.new.metadata.base.name;
-    let type_path = migrations_dir.join(format!("{mod_name}.rs"));
-    let file = File::create_new(type_path)?;
-
-    let mut writer = SourceWriter::new(BufWriter::new(file));
-    emit_migrations(&mut writer, &migration, &pairs)?;
-    writer.into_inner().flush()?;
-
-    let mod_path = migrations_dir.join("mod.rs");
-    add_mod_to_file(mod_name, &mod_path)?;
-
-    if is_directory_new {
-        add_mod_to_file(MIGRATION_MOD, &output.join("mod.rs"))?;
-    }
-
-    Ok(())
-}
-
 fn write_to_directory(
     types: &TypeSet<RustMetadata>,
     options: &RustOptions,
@@ -145,6 +117,66 @@ fn write_to_file(
 
     let mut writer = SourceWriter::new(BufWriter::new(file));
     emit_types(&mut writer, types, options)?;
+    writer.into_inner().flush()?;
+
+    Ok(())
+}
+
+pub fn generate_migration(
+    migration: Migration<BasicMetadata>,
+    output: &Path,
+    to_file: bool,
+) -> Result<()> {
+    let migration = migration.map(convert_types_for_migration);
+    let pairs = pair_types(&migration);
+
+    if to_file {
+        write_migration_to_file(&migration, &pairs, output, false)
+    } else {
+        write_migration_to_directory(&migration, &pairs, output)
+    }
+}
+
+fn write_migration_to_directory(
+    migration: &Migration<RustMigrationMetadata>,
+    pairs: &[TypePair<RustMigrationMetadata>],
+    path: &Path,
+) -> Result<()> {
+    const MIGRATION_MOD: &str = "migrations";
+
+    let migrations_dir = path.join(MIGRATION_MOD);
+    let is_directory_new = !exists(&migrations_dir)?;
+    create_dir_all(&migrations_dir)?;
+
+    let mod_name = &migration.new.metadata.base.name;
+    let type_path = migrations_dir.join(format!("{mod_name}.rs"));
+
+    write_migration_to_file(migration, pairs, &type_path, true)?;
+
+    let mod_path = migrations_dir.join("mod.rs");
+    add_mod_to_file(mod_name, &mod_path)?;
+
+    if is_directory_new {
+        add_mod_to_file(MIGRATION_MOD, &path.join("mod.rs"))?;
+    }
+
+    Ok(())
+}
+
+fn write_migration_to_file(
+    migration: &Migration<RustMigrationMetadata>,
+    pairs: &[TypePair<RustMigrationMetadata>],
+    path: &Path,
+    must_be_new: bool,
+) -> Result<()> {
+    let file = if must_be_new {
+        File::create_new(path)?
+    } else {
+        File::create(path)?
+    };
+
+    let mut writer = SourceWriter::new(BufWriter::new(file));
+    emit_migrations(&mut writer, migration, pairs)?;
     writer.into_inner().flush()?;
 
     Ok(())

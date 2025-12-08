@@ -140,6 +140,13 @@ enum RustCommand {
         /// The path to the directory with the previously generated types
         #[arg(value_hint = ValueHint::AnyPath)]
         output: PathBuf,
+        /// Interpret \<OUTPUT\> as a file instead of as a directory
+        #[arg(
+            short = 'f',
+            long,
+            help = "Interpret <OUTPUT> as a file instead of as a directory"
+        )]
+        to_file: bool,
     },
 }
 
@@ -252,9 +259,16 @@ fn main() -> ExitCode {
             Err(code) => code,
         },
         Command::Rust {
-            command: RustCommand::Migration { file, output },
+            command:
+                RustCommand::Migration {
+                    file,
+                    output,
+                    to_file,
+                },
         } => match load_migration(&file) {
-            Ok(migration) => handle_io_result(rust::generate_migration(migration, &output)),
+            Ok(migration) => {
+                handle_io_result(rust::generate_migration(migration, &output, to_file))
+            }
             Err(code) => code,
         },
         Command::TypeScript {
