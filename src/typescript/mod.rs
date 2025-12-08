@@ -1,6 +1,6 @@
 use std::{
     fs::{File, create_dir_all},
-    io::{BufWriter, Result, Write},
+    io::{BufWriter, Write},
     path::Path,
 };
 
@@ -11,7 +11,9 @@ use crate::{
         naming_pass::{NameMetadata, name},
         source_writer::SourceWriter,
     },
-    composite, mapper,
+    composite,
+    error::{Error, ResultExt},
+    mapper,
     preprocessing::{BasicMetadata, ResolutionMetadata},
     typescript::types::emit_types,
 };
@@ -25,7 +27,11 @@ fn convert_types(types: TypeSet<BasicMetadata>) -> TypeSet<TypeScriptMetadata> {
     name(types, TypeScriptNamingRules, AddName)
 }
 
-pub fn generate_types(types: TypeSet<BasicMetadata>, output: &Path, to_file: bool) -> Result<()> {
+pub fn generate_types(
+    types: TypeSet<BasicMetadata>,
+    output: &Path,
+    to_file: bool,
+) -> Result<(), Error> {
     let types = convert_types(types);
 
     if to_file {
@@ -35,8 +41,8 @@ pub fn generate_types(types: TypeSet<BasicMetadata>, output: &Path, to_file: boo
     }
 }
 
-fn write_to_directory(types: &TypeSet<TypeScriptMetadata>, path: &Path) -> Result<()> {
-    create_dir_all(path)?;
+fn write_to_directory(types: &TypeSet<TypeScriptMetadata>, path: &Path) -> Result<(), Error> {
+    create_dir_all(path).with_path(path)?;
     let mod_name = &types.metadata.name;
 
     let type_path = path.join(format!("{mod_name}.ts"));
@@ -52,25 +58,26 @@ fn write_to_file(
     types: &TypeSet<TypeScriptMetadata>,
     path: &Path,
     must_be_new: bool,
-) -> Result<()> {
+) -> Result<(), Error> {
     let file = if must_be_new {
-        File::create_new(path)?
+        File::create_new(path).with_path(path)?
     } else {
-        File::create(path)?
+        File::create(path).with_path(path)?
     };
 
     let mut writer = SourceWriter::new(BufWriter::new(file));
-    emit_types(&mut writer, types)?;
-    writer.into_inner().flush()?;
+    emit_types(&mut writer, types).with_path(path)?;
+    writer.into_inner().flush().with_path(path)?;
 
     Ok(())
 }
 
-fn add_import_to_file(module_name: &str, path: &Path) -> Result<()> {
+fn add_import_to_file(module_name: &str, path: &Path) -> Result<(), Error> {
     add_line_to_file(
         path,
         format_args!("import * as {module_name} from \"./{module_name}\";"),
     )
+    .with_path(path)
 }
 
 composite! {

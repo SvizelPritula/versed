@@ -1,6 +1,6 @@
 use std::{
     fs::{self, File},
-    io::{BufWriter, Result, Write},
+    io::{BufWriter, Write},
     path::{Path, PathBuf},
 };
 
@@ -9,6 +9,7 @@ use ariadne::{Color, Label, Report, ReportKind};
 use crate::{
     ast::TypeSet,
     codegen::file_patching::{add_extention, apply_add_edits, apply_remove_edits, concat_files},
+    error::{Error, ResultExt},
     migrations::annotate::{annotate, strip_annotations},
     preprocessing::BasicMetadata,
     reports::Reports,
@@ -25,16 +26,16 @@ pub fn old_schema_path(new_path: &Path) -> PathBuf {
     add_extention(new_path, OLD_EXTENSION)
 }
 
-pub fn begin(types: &TypeSet<BasicMetadata>, src: &str, path: &Path) -> Result<()> {
+pub fn begin(types: &TypeSet<BasicMetadata>, src: &str, path: &Path) -> Result<(), Error> {
     let edits = annotate(types);
 
     let old_path = old_schema_path(path);
 
-    let mut file = BufWriter::new(File::create_new(&old_path)?);
-    apply_add_edits(&mut file, src, edits)?;
-    file.flush()?;
+    let mut file = BufWriter::new(File::create_new(&old_path).with_path(&old_path)?);
+    apply_add_edits(&mut file, src, edits).with_path(&old_path)?;
+    file.flush().with_path(&old_path)?;
 
-    fs::copy(&old_path, path)?;
+    fs::copy(&old_path, path).with_path(path)?;
 
     Ok(())
 }
@@ -46,16 +47,16 @@ pub fn finish(
     new_path: &Path,
     old_path: &Path,
     migration_path: &Path,
-) -> Result<()> {
-    concat_files(old_src, new_src, migration_path)?;
+) -> Result<(), Error> {
+    concat_files(old_src, new_src, migration_path).with_path(migration_path)?;
 
     let edits = strip_annotations(new_types);
 
-    let mut file = BufWriter::new(File::create(new_path)?);
-    apply_remove_edits(&mut file, new_src, edits)?;
-    file.flush()?;
+    let mut file = BufWriter::new(File::create(new_path).with_path(new_path)?);
+    apply_remove_edits(&mut file, new_src, edits).with_path(new_path)?;
+    file.flush().with_path(new_path)?;
 
-    fs::remove_file(old_path)?;
+    fs::remove_file(old_path).with_path(old_path)?;
 
     Ok(())
 }

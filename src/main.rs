@@ -1,7 +1,7 @@
 use std::{
     fmt::Display,
     fs,
-    io::{self, BufWriter, Write, stdout},
+    io::{BufWriter, Write, stdout},
     path::{Path, PathBuf},
     process::ExitCode,
 };
@@ -14,6 +14,7 @@ use clap_complete::{Generator, Shell};
 
 use crate::{
     ast::{Migration, TypeSet},
+    error::{Error, ResultExt},
     preprocessing::{BasicMetadata, preprocess},
     reports::Reports,
     rust::RustOptions,
@@ -22,6 +23,7 @@ use crate::{
 
 pub mod ast;
 pub mod codegen;
+pub mod error;
 pub mod metadata;
 pub mod migrations;
 pub mod preprocessing;
@@ -189,16 +191,18 @@ fn main() -> ExitCode {
             Err(code) => code,
         },
         Command::Version { file } => match load_file(&file) {
-            Ok(TypeSet { version, .. }) => handle_io_result({
+            Ok(TypeSet { version, .. }) => handle_result({
                 let mut file = stdout().lock();
-                writeln!(file, "{version}").and_then(|()| file.flush())
+                writeln!(file, "{version}")
+                    .and_then(|()| file.flush())
+                    .with_stdout()
             }),
             Err(code) => code,
         },
         Command::Migration {
             command: MigrationCommand::Begin { file },
         } => match load_file_with_source(&file) {
-            Ok((types, src)) => handle_io_result(migrations::begin(&types, &src, &file)),
+            Ok((types, src)) => handle_result(migrations::begin(&types, &src, &file)),
             Err(code) => code,
         },
         Command::Migration {
@@ -227,7 +231,7 @@ fn main() -> ExitCode {
                 Err(code) => return code,
             }
 
-            handle_io_result(migrations::finish(
+            handle_result(migrations::finish(
                 &new_types,
                 &new_src,
                 &old_src,
@@ -254,7 +258,7 @@ fn main() -> ExitCode {
         } => match load_file(&file) {
             Ok(types) => {
                 let options = RustOptions::new(serde, derive);
-                handle_io_result(rust::generate_types(types, &options, &output, to_file))
+                handle_result(rust::generate_types(types, &options, &output, to_file))
             }
             Err(code) => code,
         },
@@ -266,9 +270,7 @@ fn main() -> ExitCode {
                     to_file,
                 },
         } => match load_migration(&file) {
-            Ok(migration) => {
-                handle_io_result(rust::generate_migration(migration, &output, to_file))
-            }
+            Ok(migration) => handle_result(rust::generate_migration(migration, &output, to_file)),
             Err(code) => code,
         },
         Command::TypeScript {
@@ -279,10 +281,10 @@ fn main() -> ExitCode {
                     to_file,
                 },
         } => match load_file(&file) {
-            Ok(types) => handle_io_result(typescript::generate_types(types, &output, to_file)),
+            Ok(types) => handle_result(typescript::generate_types(types, &output, to_file)),
             Err(code) => code,
         },
-        Command::Completions { shell } => handle_io_result({
+        Command::Completions { shell } => handle_result({
             let mut command = Args::command();
             command.set_bin_name(command.get_name().to_string());
             command.build();
@@ -292,6 +294,7 @@ fn main() -> ExitCode {
             shell
                 .try_generate(&command, &mut file)
                 .and_then(|()| file.flush())
+                .with_stdout()
         }),
     }
 }
@@ -303,12 +306,15 @@ fn print_error<E: Display>(error: &E) {
     let _ = writeln!(stream, "{STYLE}Error:{STYLE:#} {error}");
 }
 
-fn handle_io_result(result: io::Result<()>) -> ExitCode {
+fn handle_result(result: Result<(), Error>) -> ExitCode {
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             print_error(&error);
-            ExitCode::from(exit_codes::IO)
+
+            ExitCode::from(match error {
+                Error::Io { .. } => exit_codes::IO,
+            })
         }
     }
 }
@@ -321,6 +327,7 @@ fn load_file(file: &Path) -> Result<TypeSet<BasicMetadata>, ExitCode> {
 fn load_file_with_source(file: &Path) -> Result<(TypeSet<BasicMetadata>, String), ExitCode> {
     let filename = file.to_string_lossy();
     let src = fs::read_to_string(file)
+        .with_path(file)
         .inspect_err(print_error)
         .map_err(|_| ExitCode::from(exit_codes::IO))?;
     let mut reports = Reports::default();
@@ -341,6 +348,7 @@ fn load_file_with_source(file: &Path) -> Result<(TypeSet<BasicMetadata>, String)
 fn load_migration(file: &Path) -> Result<Migration<BasicMetadata>, ExitCode> {
     let filename = file.to_string_lossy();
     let src = fs::read_to_string(file)
+        .with_path(file)
         .inspect_err(print_error)
         .map_err(|_| ExitCode::from(exit_codes::IO))?;
     let mut reports = Reports::default();
@@ -366,6 +374,7 @@ fn print_all_reports(reports: &Reports, filename: &str, src: &str) -> Result<(),
         for report in reports {
             report
                 .write(&mut cache, &mut stream)
+                .with_stderr()
                 // If writing the report failed, then printing the error will probably fail too, but might as well try
                 .inspect_err(print_error)
                 .map_err(|_| ExitCode::from(exit_codes::IO))?;
