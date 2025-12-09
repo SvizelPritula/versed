@@ -13,6 +13,8 @@ pub enum Error {
         error: io::Error,
         path: PathBuf,
     },
+    #[error("The file is malformed")]
+    MalformedFile,
 }
 
 pub trait ResultExt {

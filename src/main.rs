@@ -184,27 +184,28 @@ mod exit_codes {
 
 fn main() -> ExitCode {
     let args = Args::parse();
+    handle_result(run_command(args))
+}
 
+fn run_command(args: Args) -> Result<(), Error> {
     match args.command {
-        Command::Check { file } => match load_file(&file) {
-            Ok(_) => ExitCode::SUCCESS,
-            Err(code) => code,
-        },
-        Command::Version { file } => match load_file(&file) {
-            Ok(TypeSet { version, .. }) => handle_result({
-                let mut file = stdout().lock();
-                writeln!(file, "{version}")
-                    .and_then(|()| file.flush())
-                    .with_stdout()
-            }),
-            Err(code) => code,
-        },
+        Command::Check { file } => {
+            load_file(&file)?;
+        }
+        Command::Version { file } => {
+            let TypeSet { version, .. } = load_file(&file)?;
+            let mut file = stdout().lock();
+
+            writeln!(file, "{version}")
+                .and_then(|()| file.flush())
+                .with_stdout()?;
+        }
         Command::Migration {
             command: MigrationCommand::Begin { file },
-        } => match load_file_with_source(&file) {
-            Ok((types, src)) => handle_result(migrations::begin(&types, &src, &file)),
-            Err(code) => code,
-        },
+        } => {
+            let (types, src) = load_file_with_source(&file)?;
+            migrations::begin(&types, &src, &file)?;
+        }
         Command::Migration {
             command:
                 MigrationCommand::Finish {
@@ -214,38 +215,28 @@ fn main() -> ExitCode {
         } => {
             let old_file = migrations::old_schema_path(&new_file);
 
-            let (new_types, new_src) = match load_file_with_source(&new_file) {
-                Ok(res) => res,
-                Err(code) => return code,
-            };
-            let (old_types, old_src) = match load_file_with_source(&old_file) {
-                Ok(res) => res,
-                Err(code) => return code,
-            };
+            let (new_types, new_src) = load_file_with_source(&new_file)?;
+            let (old_types, old_src) = load_file_with_source(&old_file)?;
 
             let filename = new_file.to_string_lossy();
             let reports = migrations::check_versions(&new_types, &old_types, &filename);
 
-            match print_all_reports(&reports, &filename, &new_src) {
-                Ok(()) => {}
-                Err(code) => return code,
-            }
+            handle_reports(&reports, &filename, &new_src)?;
 
-            handle_result(migrations::finish(
+            migrations::finish(
                 &new_types,
                 &new_src,
                 &old_src,
                 &new_file,
                 &old_file,
                 &migration_file,
-            ))
+            )?
         }
         Command::Migration {
             command: MigrationCommand::Check { file },
-        } => match load_migration(&file) {
-            Ok(_) => ExitCode::SUCCESS,
-            Err(code) => code,
-        },
+        } => {
+            load_migration(&file)?;
+        }
         Command::Rust {
             command:
                 RustCommand::Types {
@@ -255,13 +246,11 @@ fn main() -> ExitCode {
                     derive,
                     serde,
                 },
-        } => match load_file(&file) {
-            Ok(types) => {
-                let options = RustOptions::new(serde, derive);
-                handle_result(rust::generate_types(types, &options, &output, to_file))
-            }
-            Err(code) => code,
-        },
+        } => {
+            let types = load_file(&file)?;
+            let options = RustOptions::new(serde, derive);
+            rust::generate_types(types, &options, &output, to_file)?
+        }
         Command::Rust {
             command:
                 RustCommand::Migration {
@@ -269,10 +258,10 @@ fn main() -> ExitCode {
                     output,
                     to_file,
                 },
-        } => match load_migration(&file) {
-            Ok(migration) => handle_result(rust::generate_migration(migration, &output, to_file)),
-            Err(code) => code,
-        },
+        } => {
+            let migration = load_migration(&file)?;
+            rust::generate_migration(migration, &output, to_file)?;
+        }
         Command::TypeScript {
             command:
                 TypeScriptCommand::Types {
@@ -280,11 +269,11 @@ fn main() -> ExitCode {
                     output,
                     to_file,
                 },
-        } => match load_file(&file) {
-            Ok(types) => handle_result(typescript::generate_types(types, &output, to_file)),
-            Err(code) => code,
-        },
-        Command::Completions { shell } => handle_result({
+        } => {
+            let types = load_file(&file)?;
+            typescript::generate_types(types, &output, to_file)?;
+        }
+        Command::Completions { shell } => {
             let mut command = Args::command();
             command.set_bin_name(command.get_name().to_string());
             command.build();
@@ -294,9 +283,11 @@ fn main() -> ExitCode {
             shell
                 .try_generate(&command, &mut file)
                 .and_then(|()| file.flush())
-                .with_stdout()
-        }),
+                .with_stdout()?;
+        }
     }
+
+    Ok(())
 }
 
 fn print_error<E: Display>(error: &E) {
@@ -309,80 +300,56 @@ fn print_error<E: Display>(error: &E) {
 fn handle_result(result: Result<(), Error>) -> ExitCode {
     match result {
         Ok(()) => ExitCode::SUCCESS,
-        Err(error) => {
+        Err(error @ Error::Io { .. }) => {
             print_error(&error);
-
-            ExitCode::from(match error {
-                Error::Io { .. } => exit_codes::IO,
-            })
+            ExitCode::from(exit_codes::IO)
         }
+        Err(Error::MalformedFile) => ExitCode::from(exit_codes::MALFORMED_FILE),
     }
 }
 
 /// Loads and parses the file, printing any errors
-fn load_file(file: &Path) -> Result<TypeSet<BasicMetadata>, ExitCode> {
+fn load_file(file: &Path) -> Result<TypeSet<BasicMetadata>, Error> {
     load_file_with_source(file).map(|(types, _)| types)
 }
 
-fn load_file_with_source(file: &Path) -> Result<(TypeSet<BasicMetadata>, String), ExitCode> {
+fn load_file_with_source(file: &Path) -> Result<(TypeSet<BasicMetadata>, String), Error> {
     let filename = file.to_string_lossy();
-    let src = fs::read_to_string(file)
-        .with_path(file)
-        .inspect_err(print_error)
-        .map_err(|_| ExitCode::from(exit_codes::IO))?;
+    let src = fs::read_to_string(file).with_path(file)?;
     let mut reports = Reports::default();
 
     let ast = parse_schema(&src, &mut reports, &filename);
 
     let ast = ast.map(|types| preprocess(types, &mut reports, &filename));
 
-    print_all_reports(&reports, &filename, &src)?;
-
-    if let Some(ast) = ast {
-        Ok((ast, src))
-    } else {
-        Err(ExitCode::from(exit_codes::MALFORMED_FILE))
-    }
+    handle_reports(&reports, &filename, &src)?;
+    ast.ok_or(Error::MalformedFile).map(|ast| (ast, src))
 }
 
-fn load_migration(file: &Path) -> Result<Migration<BasicMetadata>, ExitCode> {
+fn load_migration(file: &Path) -> Result<Migration<BasicMetadata>, Error> {
     let filename = file.to_string_lossy();
-    let src = fs::read_to_string(file)
-        .with_path(file)
-        .inspect_err(print_error)
-        .map_err(|_| ExitCode::from(exit_codes::IO))?;
+    let src = fs::read_to_string(file).with_path(file)?;
     let mut reports = Reports::default();
 
     let migration = parse_migration(&src, &mut reports, &filename);
-
     let migration = migration.map(|m| m.map(|types| preprocess(types, &mut reports, &filename)));
 
-    print_all_reports(&reports, &filename, &src)?;
-
-    if let Some(migration) = migration {
-        Ok(migration)
-    } else {
-        Err(ExitCode::from(exit_codes::MALFORMED_FILE))
-    }
+    handle_reports(&reports, &filename, &src)?;
+    migration.ok_or(Error::MalformedFile)
 }
 
-fn print_all_reports(reports: &Reports, filename: &str, src: &str) -> Result<(), ExitCode> {
+fn handle_reports(reports: &Reports, filename: &str, src: &str) -> Result<(), Error> {
     if reports.has_any() {
         let mut stream = BufWriter::new(stderr().lock());
         let mut cache = (filename, Source::from(src));
 
         for report in reports {
-            report
-                .write(&mut cache, &mut stream)
-                .with_stderr()
-                // If writing the report failed, then printing the error will probably fail too, but might as well try
-                .inspect_err(print_error)
-                .map_err(|_| ExitCode::from(exit_codes::IO))?;
+            report.write(&mut cache, &mut stream).with_stderr()?;
         }
     }
 
     if reports.has_fatal() {
-        Err(ExitCode::from(exit_codes::MALFORMED_FILE))
+        Err(Error::MalformedFile)
     } else {
         Ok(())
     }
