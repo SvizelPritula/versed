@@ -60,12 +60,12 @@ fn annotate_type(r#type: &Type<BasicMetadata>, context: &mut AnnotationContext) 
     match &r#type.r#type {
         TypeType::Struct(r#struct) => {
             for field in &r#struct.fields {
-                annotate_type(&field.r#type, context)
+                annotate_type(&field.r#type, context);
             }
         }
         TypeType::Enum(r#enum) => {
             for variant in &r#enum.variants {
-                annotate_type(&variant.r#type, context)
+                annotate_type(&variant.r#type, context);
             }
         }
         TypeType::List(list) => annotate_type(&list.r#type, context),

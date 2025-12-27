@@ -14,6 +14,8 @@ use crate::syntax::{
 pub type Error<'src> = Rich<'src, char, Span>;
 
 pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<Spanned<Token>>, extra::Err<Error<'src>>> {
+    const REPLACEMENT_CHARACTER: char = '\u{FFFD}';
+
     let ident_like = ident().map(|s: &str| match s {
         "version" => Token::Keyword(Keyword::Version),
         "struct" => Token::Keyword(Keyword::Struct),
@@ -26,9 +28,6 @@ pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<Spanned<Token>>, extra:
     });
 
     // Structure of string parsing inspired by Rust, code inspired by the official JSON example
-
-    const REPLACEMENT_CHARACTER: char = '\u{FFFD}';
-
     let unicode_escape = digits(16)
         .at_least(1)
         .at_most(6)

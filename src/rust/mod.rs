@@ -6,16 +6,24 @@ use std::{
 };
 
 use crate::{
-    ast::{Migration, TypeSet}, codegen::{
+    ast::{Migration, TypeSet},
+    codegen::{
         file_patching::add_line_to_file,
         naming_pass::{NameMetadata, name},
         source_writer::SourceWriter,
-    }, composite, error::{Error, ResultExt}, getter, load_file, load_migration, mapper, migrations::{TypePair, pair_types}, preprocessing::{BasicMetadata, ResolutionMetadata}, rust::{
+    },
+    composite,
+    error::{Error, ResultExt},
+    getter, load_file, load_migration, mapper,
+    migrations::{TypePair, pair_types},
+    preprocessing::{BasicMetadata, ResolutionMetadata},
+    rust::{
         idents::{RustMigrationSuffixNamingRules, RustNamingRules},
         migrations::emit_migrations,
         recursive::{BoxMetadata, NewtypeMetadata, mark_boxes, mark_newtypes},
         types::emit_types,
-    }, typescript::TypeScriptNamingRules
+    },
+    typescript::TypeScriptNamingRules,
 };
 
 mod codegen;

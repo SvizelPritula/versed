@@ -119,6 +119,66 @@ fn single_or_group<'tokens, I: Input<'tokens>>() -> Parser![()] {
     })
 }
 
+fn composite<'tokens, I: Input<'tokens>, F, T>(
+    leading_keyword: Keyword,
+    map_field: impl Fn(String, Type<SpanMetadata>, Span) -> F + Clone,
+    map_type: impl Fn(Vec<F>) -> T + Clone,
+    r#type: Parser![Type<SpanMetadata>],
+) -> Parser![T] {
+    let field = ident()
+        .map_with(|ident, e| (ident, e.span()))
+        .then_with_ctx(
+            punct(Punct::Colon)
+                .ignore_then(r#type.clone())
+                .with_ctx(())
+                .or(punct(Punct::Colon)
+                    .not()
+                    .ignore_then(type_number())
+                    .with_ctx(())
+                    .map_with(|number, e| Type {
+                        r#type: TypeType::Primitive(UNIT),
+                        number: number.map(|(number, _)| number),
+                        metadata: TypeSpanInfo {
+                            r#type: {
+                                let (_, Span { end, .. }) = e.ctx();
+                                Span::from(*end..*end)
+                            },
+                            number: number.map(|(_, span)| span),
+                        },
+                    })),
+        )
+        .map(move |((ident, span), r#type)| map_field(ident, r#type, span));
+
+    let skip_to_comma = skip_until(
+        single_or_group(),
+        punct(Punct::Comma).rewind().ignored(),
+        || None,
+    );
+    let skip_to_brace = via_parser(
+        single_or_group()
+            .repeated()
+            .at_least(1)
+            .then_ignore(right(Group::Brace).rewind())
+            .map(|()| None),
+    );
+
+    let body = field
+        .map(Some)
+        .recover_with(skip_to_comma)
+        .recover_with(skip_to_brace)
+        .separated_by(
+            punct(Punct::Comma)
+                .ignored()
+                .recover_with(via_parser(right(Group::Brace).not())),
+        )
+        .allow_trailing()
+        .collect()
+        .map(|ExtendVec(inner)| inner)
+        .delimited_by(left(Group::Brace), right(Group::Brace));
+
+    keyword(leading_keyword).ignore_then(body).map(map_type)
+}
+
 const UNIT: Primitive<SpanMetadata> = Primitive {
     r#type: PrimitiveType::Unit,
     metadata: (),
@@ -177,66 +237,6 @@ fn schema_parser<'tokens, I: Input<'tokens>>(
                     metadata: (),
                 })
             });
-
-        fn composite<'tokens, I: Input<'tokens>, F, T>(
-            leading_keyword: Keyword,
-            map_field: impl Fn(String, Type<SpanMetadata>, Span) -> F + Clone,
-            map_type: impl Fn(Vec<F>) -> T + Clone,
-            r#type: Parser![Type<SpanMetadata>],
-        ) -> Parser![T] {
-            let field = ident()
-                .map_with(|ident, e| (ident, e.span()))
-                .then_with_ctx(
-                    punct(Punct::Colon)
-                        .ignore_then(r#type.clone())
-                        .with_ctx(())
-                        .or(punct(Punct::Colon)
-                            .not()
-                            .ignore_then(type_number())
-                            .with_ctx(())
-                            .map_with(|number, e| Type {
-                                r#type: TypeType::Primitive(UNIT),
-                                number: number.map(|(number, _)| number),
-                                metadata: TypeSpanInfo {
-                                    r#type: {
-                                        let (_, Span { end, .. }) = e.ctx();
-                                        Span::from(*end..*end)
-                                    },
-                                    number: number.map(|(_, span)| span),
-                                },
-                            })),
-                )
-                .map(move |((ident, span), r#type)| map_field(ident, r#type, span));
-
-            let skip_to_comma = skip_until(
-                single_or_group(),
-                punct(Punct::Comma).rewind().ignored(),
-                || None,
-            );
-            let skip_to_brace = via_parser(
-                single_or_group()
-                    .repeated()
-                    .at_least(1)
-                    .then_ignore(right(Group::Brace).rewind())
-                    .map(|()| None),
-            );
-
-            let body = field
-                .map(Some)
-                .recover_with(skip_to_comma)
-                .recover_with(skip_to_brace)
-                .separated_by(
-                    punct(Punct::Comma)
-                        .ignored()
-                        .recover_with(via_parser(right(Group::Brace).not())),
-                )
-                .allow_trailing()
-                .collect()
-                .map(|ExtendVec(inner)| inner)
-                .delimited_by(left(Group::Brace), right(Group::Brace));
-
-            keyword(leading_keyword).ignore_then(body).map(map_type)
-        }
 
         let r#struct = composite(
             Keyword::Struct,
