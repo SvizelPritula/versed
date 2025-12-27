@@ -6,24 +6,16 @@ use std::{
 };
 
 use crate::{
-    ast::{Migration, TypeSet},
-    codegen::{
+    ast::{Migration, TypeSet}, codegen::{
         file_patching::add_line_to_file,
         naming_pass::{NameMetadata, name},
         source_writer::SourceWriter,
-    },
-    composite,
-    error::{Error, ResultExt},
-    getter, mapper,
-    migrations::{TypePair, pair_types},
-    preprocessing::{BasicMetadata, ResolutionMetadata},
-    rust::{
+    }, composite, error::{Error, ResultExt}, getter, load_file, load_migration, mapper, migrations::{TypePair, pair_types}, preprocessing::{BasicMetadata, ResolutionMetadata}, rust::{
         idents::{RustMigrationSuffixNamingRules, RustNamingRules},
         migrations::emit_migrations,
         recursive::{BoxMetadata, NewtypeMetadata, mark_boxes, mark_newtypes},
         types::emit_types,
-    },
-    typescript::TypeScriptNamingRules,
+    }, typescript::TypeScriptNamingRules
 };
 
 mod codegen;
@@ -74,11 +66,12 @@ fn convert_types_for_migration(types: TypeSet<BasicMetadata>) -> TypeSet<RustMig
 }
 
 pub fn generate_types(
-    types: TypeSet<BasicMetadata>,
-    options: &RustOptions,
+    path: &Path,
     output: &Path,
     to_file: bool,
+    options: &RustOptions,
 ) -> Result<(), Error> {
+    let types = load_file(path)?;
     let types = convert_types(types);
 
     if to_file {
@@ -124,11 +117,8 @@ fn write_to_file(
     Ok(())
 }
 
-pub fn generate_migration(
-    migration: Migration<BasicMetadata>,
-    output: &Path,
-    to_file: bool,
-) -> Result<(), Error> {
+pub fn generate_migration(path: &Path, output: &Path, to_file: bool) -> Result<(), Error> {
+    let migration = load_migration(path)?;
     let migration = migration.map(convert_types_for_migration);
     let pairs = pair_types(&migration);
 

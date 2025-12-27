@@ -182,6 +182,24 @@ mod exit_codes {
     pub const IO: u8 = 3;
 }
 
+fn handle_result(result: Result<(), Error>) -> ExitCode {
+    match result {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error @ Error::Io { .. }) => {
+            print_error(&error);
+            ExitCode::from(exit_codes::IO)
+        }
+        Err(Error::MalformedFile) => ExitCode::from(exit_codes::MALFORMED_FILE),
+    }
+}
+
+fn print_error<E: Display>(error: &E) {
+    const STYLE: Style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Red)));
+
+    let mut stream = BufWriter::new(stderr().lock());
+    let _ = writeln!(stream, "{STYLE}Error:{STYLE:#} {error}");
+}
+
 fn main() -> ExitCode {
     let args = Args::parse();
     handle_result(run_command(args))
@@ -192,46 +210,13 @@ fn run_command(args: Args) -> Result<(), Error> {
         Command::Check { file } => {
             load_file(&file)?;
         }
-        Command::Version { file } => {
-            let TypeSet { version, .. } = load_file(&file)?;
-            let mut file = stdout().lock();
-
-            writeln!(file, "{version}")
-                .and_then(|()| file.flush())
-                .with_stdout()?;
-        }
+        Command::Version { file } => print_version(&file)?,
         Command::Migration {
             command: MigrationCommand::Begin { file },
-        } => {
-            let (types, src) = load_file_with_source(&file)?;
-            migrations::begin(&types, &src, &file)?;
-        }
+        } => migrations::begin(&file)?,
         Command::Migration {
-            command:
-                MigrationCommand::Finish {
-                    file: new_file,
-                    migration: migration_file,
-                },
-        } => {
-            let old_file = migrations::old_schema_path(&new_file);
-
-            let (new_types, new_src) = load_file_with_source(&new_file)?;
-            let (old_types, old_src) = load_file_with_source(&old_file)?;
-
-            let filename = new_file.to_string_lossy();
-            let reports = migrations::check_versions(&new_types, &old_types, &filename);
-
-            handle_reports(&reports, &filename, &new_src)?;
-
-            migrations::finish(
-                &new_types,
-                &new_src,
-                &old_src,
-                &new_file,
-                &old_file,
-                &migration_file,
-            )?
-        }
+            command: MigrationCommand::Finish { file, migration },
+        } => migrations::finish(&file, &migration)?,
         Command::Migration {
             command: MigrationCommand::Check { file },
         } => {
@@ -246,11 +231,7 @@ fn run_command(args: Args) -> Result<(), Error> {
                     derive,
                     serde,
                 },
-        } => {
-            let types = load_file(&file)?;
-            let options = RustOptions::new(serde, derive);
-            rust::generate_types(types, &options, &output, to_file)?
-        }
+        } => rust::generate_types(&file, &output, to_file, &RustOptions::new(serde, derive))?,
         Command::Rust {
             command:
                 RustCommand::Migration {
@@ -258,10 +239,7 @@ fn run_command(args: Args) -> Result<(), Error> {
                     output,
                     to_file,
                 },
-        } => {
-            let migration = load_migration(&file)?;
-            rust::generate_migration(migration, &output, to_file)?;
-        }
+        } => rust::generate_migration(&file, &output, to_file)?,
         Command::TypeScript {
             command:
                 TypeScriptCommand::Types {
@@ -269,43 +247,35 @@ fn run_command(args: Args) -> Result<(), Error> {
                     output,
                     to_file,
                 },
-        } => {
-            let types = load_file(&file)?;
-            typescript::generate_types(types, &output, to_file)?;
-        }
-        Command::Completions { shell } => {
-            let mut command = Args::command();
-            command.set_bin_name(command.get_name().to_string());
-            command.build();
-
-            let mut file = stdout().lock();
-
-            shell
-                .try_generate(&command, &mut file)
-                .and_then(|()| file.flush())
-                .with_stdout()?;
-        }
+        } => typescript::generate_types(&file, &output, to_file)?,
+        Command::Completions { shell } => print_completions(shell)?,
     }
 
     Ok(())
 }
 
-fn print_error<E: Display>(error: &E) {
-    const STYLE: Style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Red)));
+fn print_version(path: &Path) -> Result<(), Error> {
+    let TypeSet { version, .. } = load_file(path)?;
+    let mut file = stdout().lock();
 
-    let mut stream = BufWriter::new(stderr().lock());
-    let _ = writeln!(stream, "{STYLE}Error:{STYLE:#} {error}");
+    writeln!(file, "{version}")
+        .and_then(|()| file.flush())
+        .with_stdout()?;
+
+    Ok(())
 }
 
-fn handle_result(result: Result<(), Error>) -> ExitCode {
-    match result {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(error @ Error::Io { .. }) => {
-            print_error(&error);
-            ExitCode::from(exit_codes::IO)
-        }
-        Err(Error::MalformedFile) => ExitCode::from(exit_codes::MALFORMED_FILE),
-    }
+fn print_completions(shell: Shell) -> Result<(), Error> {
+    let mut command = Args::command();
+    command.set_bin_name(command.get_name().to_string());
+    command.build();
+
+    let mut file = stdout().lock();
+
+    shell
+        .try_generate(&command, &mut file)
+        .and_then(|()| file.flush())
+        .with_stdout()
 }
 
 /// Loads and parses the file, printing any errors
@@ -319,7 +289,6 @@ fn load_file_with_source(file: &Path) -> Result<(TypeSet<BasicMetadata>, String)
     let mut reports = Reports::default();
 
     let ast = parse_schema(&src, &mut reports, &filename);
-
     let ast = ast.map(|types| preprocess(types, &mut reports, &filename));
 
     handle_reports(&reports, &filename, &src)?;

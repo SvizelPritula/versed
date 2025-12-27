@@ -10,6 +10,7 @@ use crate::{
     ast::TypeSet,
     codegen::file_patching::{add_extention, apply_add_edits, apply_remove_edits, concat_files},
     error::{Error, ResultExt},
+    handle_reports, load_file_with_source,
     migrations::annotate::{annotate, strip_annotations},
     preprocessing::BasicMetadata,
     reports::Reports,
@@ -22,17 +23,18 @@ mod pairing;
 
 const OLD_EXTENSION: &str = ".old";
 
-pub fn old_schema_path(new_path: &Path) -> PathBuf {
+fn old_schema_path(new_path: &Path) -> PathBuf {
     add_extention(new_path, OLD_EXTENSION)
 }
 
-pub fn begin(types: &TypeSet<BasicMetadata>, src: &str, path: &Path) -> Result<(), Error> {
-    let edits = annotate(types);
+pub fn begin(path: &Path) -> Result<(), Error> {
+    let (types, src) = load_file_with_source(path)?;
+    let edits = annotate(&types);
 
     let old_path = old_schema_path(path);
 
     let mut file = BufWriter::new(File::create_new(&old_path).with_path(&old_path)?);
-    apply_add_edits(&mut file, src, edits).with_path(&old_path)?;
+    apply_add_edits(&mut file, &src, edits).with_path(&old_path)?;
     file.flush().with_path(&old_path)?;
 
     fs::copy(&old_path, path).with_path(path)?;
@@ -40,28 +42,30 @@ pub fn begin(types: &TypeSet<BasicMetadata>, src: &str, path: &Path) -> Result<(
     Ok(())
 }
 
-pub fn finish(
-    new_types: &TypeSet<BasicMetadata>,
-    new_src: &str,
-    old_src: &str,
-    new_path: &Path,
-    old_path: &Path,
-    migration_path: &Path,
-) -> Result<(), Error> {
-    concat_files(old_src, new_src, migration_path).with_path(migration_path)?;
+pub fn finish(new_path: &Path, migration_path: &Path) -> Result<(), Error> {
+    let old_path = old_schema_path(new_path);
 
-    let edits = strip_annotations(new_types);
+    let (new_types, new_src) = load_file_with_source(new_path)?;
+    let (old_types, old_src) = load_file_with_source(&old_path)?;
+
+    let filename = new_path.to_string_lossy();
+    let reports = check_versions(&new_types, &old_types, &filename);
+    handle_reports(&reports, &filename, &new_src)?;
+
+    concat_files(&old_src, &new_src, migration_path).with_path(migration_path)?;
+
+    let edits = strip_annotations(&new_types);
 
     let mut file = BufWriter::new(File::create(new_path).with_path(new_path)?);
-    apply_remove_edits(&mut file, new_src, edits).with_path(new_path)?;
+    apply_remove_edits(&mut file, &new_src, edits).with_path(new_path)?;
     file.flush().with_path(new_path)?;
 
-    fs::remove_file(old_path).with_path(old_path)?;
+    fs::remove_file(&old_path).with_path(&old_path)?;
 
     Ok(())
 }
 
-pub fn check_versions<'filename>(
+fn check_versions<'filename>(
     new: &TypeSet<BasicMetadata>,
     old: &TypeSet<BasicMetadata>,
     filename: &'filename str,

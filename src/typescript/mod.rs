@@ -13,7 +13,7 @@ use crate::{
     },
     composite,
     error::{Error, ResultExt},
-    mapper,
+    load_file, mapper,
     preprocessing::{BasicMetadata, ResolutionMetadata},
     typescript::types::emit_types,
 };
@@ -27,11 +27,8 @@ fn convert_types(types: TypeSet<BasicMetadata>) -> TypeSet<TypeScriptMetadata> {
     name(types, TypeScriptNamingRules, AddName)
 }
 
-pub fn generate_types(
-    types: TypeSet<BasicMetadata>,
-    output: &Path,
-    to_file: bool,
-) -> Result<(), Error> {
+pub fn generate_types(path: &Path, output: &Path, to_file: bool) -> Result<(), Error> {
+    let types = load_file(path)?;
     let types = convert_types(types);
 
     if to_file {
