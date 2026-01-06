@@ -14,8 +14,8 @@ exclude = ["/docs/", "/.github/"]
 [dependencies]
 anstream = "0.6.20"
 anstyle = "1.0.11"
-ariadne = "0.5.1"
-chumsky = { version = "0.11.1", features = ["either"] }
+ariadne = "0.6.0"
+chumsky = { version = "0.12.0", features = ["either"] }
 clap = { version = "4.5.47", features = ["derive", "wrap_help"] }
 clap_complete = "4.5.57"
 either = "1.15.0"
