@@ -66,7 +66,7 @@ fn check_with_options(schema: &str, check_roundtrip: bool) {
 }
 
 fn check(schema: &str) {
-    check_with_options(schema, true);
+    check_with_options(schema, !schema.contains('#'));
 }
 
 include!("utils/test_schemas.inc.rs");

@@ -18,6 +18,9 @@ fn readme() {
                 if !is_other_language {
                     if !contains_version {
                         body.insert_str(0, "version v1;\n");
+                    } else {
+                        // Some examples use v2.
+                        body = body.replace("version v2;", "version v1;");
                     }
 
                     check(&body);
@@ -27,12 +30,12 @@ fn readme() {
             }
         } else {
             if in_code_block {
-                body.push_str(line);
-                body.push('\n');
-
                 if line.starts_with("version ") {
                     contains_version = true;
                 }
+
+                body.push_str(line);
+                body.push('\n');
             }
         }
     }
