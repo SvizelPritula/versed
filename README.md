@@ -149,7 +149,7 @@ Say you make the following changes:
 version v2;
 
 User = #1 struct {
-    real-name: #2 string,
+    real_name: #2 string,
     username: string,
     age: #3 enum { known: #4 int, unknown #5 },
     contacts: #6 [#7 Contact],
