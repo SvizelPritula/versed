@@ -6,6 +6,8 @@ in a simple custom language based on algebraic data types.
 The types it generates can be serialized to JSON,
 using [Serde](https://serde.rs/) in Rust and `JSON.serialize(…)` in TypeScript,
 and deserialized again in any supported language.
+It also supports scaffolding migration functions in Rust
+that convert the data types between versions using interactive migrations.
 
 ## Example
 
@@ -114,9 +116,153 @@ export type Contact = (
 `versed` automatically converts identifiers based on the naming convention of the target language,
 i.e. PascalCase/snake_case for Rust and PascalCase/camelCase/kebab-case for TypeScript.
 
+The main feature of `versed` is its interactive migrations.
+You can use `versed migration begin schema.vs` to start,
+which will add migration markers to the schema file:
+
+```
+// schema.vs
+version v1;
+
+User = #1 struct {
+    name: #2 string,
+    age: #3 enum { known: #4 int, unknown #5 },
+    contacts: #6 [#7 Contact],
+};
+
+Contact = #8 enum {
+    phone: #9 int,
+    email: #10 string,
+    address: #11 struct {
+        street: #12 string,
+        city: #13 string,
+        country: #14 string,
+    },
+};
+```
+
+You can then edit this file however you want, as long as you keep the markers intact.
+Say you make the following changes:
+
+```
+// schema.vs
+version v2;
+
+User = #1 struct {
+    real-name: #2 string,
+    username: string,
+    age: #3 enum { known: #4 int, unknown #5 },
+    contacts: #6 [#7 Contact],
+};
+
+Contact = #8 enum {
+    phone: #9 string,
+    fax: string,
+    email: #10 string,
+    address: Address,
+};
+
+Address = #11 struct {
+    street: #12 string,
+    city: #13 string,
+    country: #14 string,
+};
+```
+
+You can then use `versed migration finish schema.vs schema.vsm` to end the interactive migration,
+which removes the markers and creates a migration file.
+Afterwards, you can run `versed rust migration schema.vsm src/schema/`
+to scaffold the migration functions.
+This will give you a file that contains most of the boilerplate,
+with just a couple of `todo!()`s that need replacing:
+
+```rs
+// src/schema/migrations/v2.rs
+pub mod upgrade {
+    use super::super::super::{v1, v2};
+
+    pub fn upgrade_user(user: v1::User) -> v2::User {
+        v2::User {
+            real_name: upgrade_user_real_name(user.name),
+            username: todo!(),
+            age: upgrade_user_age(user.age),
+            contacts: upgrade_user_contacts(user.contacts),
+        }
+    }
+
+    pub fn upgrade_user_real_name(user_name: String) -> String {
+        user_name
+    }
+
+    pub fn upgrade_user_age(user_age: v1::UserAge) -> v2::UserAge {
+        match user_age {
+            v1::UserAge::Known(known) => v2::UserAge::Known(upgrade_user_age_known(known)),
+            v1::UserAge::Unknown(unknown) => v2::UserAge::Unknown(upgrade_user_age_unknown(unknown)),
+        }
+    }
+
+    pub fn upgrade_user_age_known(user_age_known: i64) -> i64 {
+        user_age_known
+    }
+
+    pub fn upgrade_user_age_unknown(user_age_unknown: ()) -> () {
+        user_age_unknown
+    }
+
+    pub fn upgrade_user_contacts(user_contacts: Vec<v1::Contact>) -> Vec<v2::Contact> {
+        user_contacts.into_iter().map(upgrade_user_contacts_element).collect()
+    }
+
+    pub fn upgrade_user_contacts_element(user_contacts_element: v1::Contact) -> v2::Contact {
+        upgrade_contact(user_contacts_element)
+    }
+
+    pub fn upgrade_contact(contact: v1::Contact) -> v2::Contact {
+        match contact {
+            v1::Contact::Phone(phone) => v2::Contact::Phone(upgrade_contact_phone(phone)),
+            v1::Contact::Email(email) => v2::Contact::Email(upgrade_contact_email(email)),
+            v1::Contact::Address(address) => todo!(),
+        }
+    }
+
+    pub fn upgrade_contact_phone(contact_phone: i64) -> String {
+        todo!()
+    }
+
+    pub fn upgrade_contact_email(contact_email: String) -> String {
+        contact_email
+    }
+
+    pub fn upgrade_address(contact_address: v1::ContactAddress) -> v2::Address {
+        v2::Address {
+            street: upgrade_address_street(contact_address.street),
+            city: upgrade_address_city(contact_address.city),
+            country: upgrade_address_country(contact_address.country),
+        }
+    }
+
+    pub fn upgrade_address_street(contact_address_street: String) -> String {
+        contact_address_street
+    }
+
+    pub fn upgrade_address_city(contact_address_city: String) -> String {
+        contact_address_city
+    }
+
+    pub fn upgrade_address_country(contact_address_country: String) -> String {
+        contact_address_country
+    }
+}
+
+pub mod downgrade {
+    // Omitted for brevity
+}
+```
+
 ## Usage
 
-There are two main commands, `versed rust types` and `versed typescript types`.
+There are two commands related to type generation,
+`versed rust types` and `versed typescript types`.
 Both take two arguments, the path to the schema and the path to the output directory,
 in that order.
 Versed will write the generated types to a new file inside the output directory
@@ -130,13 +276,29 @@ The directory will be created if it doesn't exist.
 You can also use the `-f` or `--to-file` flag to write the types directly to a specified file,
 which will cause the second argument to be interpreted as the path to that file
 instead of a directory.
-For example, `versed rust types schema.vs src/current-schema.rs` will simply
+For example, `versed rust types schema.vs -f src/current-schema.rs` will simply
 write the types to `src/current-schema.rs`.
 
 If you only want to check if a schema file is syntactically and semantically well-formed,
 you can use `versed check`.
 There is also `versed version`, which will additionally
 output the version of the schema.
+
+As for migrations, there are two commands used for creating a migration file
+and one for generating the migration functions.
+The `versed migration begin` command starts the interactive migration.
+It takes the path to the schema file containing the old version,
+saves a copy of it and adds migration markers to it.
+You can then edit the file as you wish.
+The `versed migration finish` command ends the migration
+and creates the migration file.
+Lastly, `versed rust migration` works like `versed rust types`,
+except it generates migration functions instead of type declarations.
+For example, you could use `versed migration begin schema.vs` to start the migration,
+`versed migration finish schema.vs schema.vsm` to end it
+and `versed rust migration schema.vs src/schema/` to create the migration functions.
+
+There is also a `versed migration check` command that corresponds to `versed check`.
 
 Lastly, there is `versed completions`, which prints out a script for providing tab-completion
 for `versed` for the specified shell.
@@ -162,8 +324,6 @@ version v1;
 
 The version name is used to name the generated Rust module.
 This way you can have multiple versions of the same schema in your project.
-In the future, you will be able to migrate values from one version to another
-using semi-automatically generated migration functions.
 
 ### Named types
 
@@ -290,7 +450,7 @@ cargo install versed
 
 ## License
 
-Copyright 2025 Benjamin Swart
+Copyright 2025–2026 Benjamin Swart
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this software except in compliance with the License.
