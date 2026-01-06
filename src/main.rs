@@ -32,7 +32,7 @@ pub mod rust;
 pub mod syntax;
 pub mod typescript;
 
-/// A tool for generating DTOs from schema descriptions
+/// A tool for generating DTOs and their migrations from schema descriptions
 #[derive(Parser, Debug)]
 #[command(version)]
 struct Args {
