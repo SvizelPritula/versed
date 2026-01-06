@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release for ${{ matrix.target.name }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - triple: x86_64-unknown-linux-gnu
+            name: linux-x86_64-gnu
+            deps: []
+
+          - triple: x86_64-unknown-linux-musl
+            name: linux-x86_64-musl
+            deps: ["musl-dev"]
+
+          - triple: x86_64-pc-windows-gnu
+            name: windows-x86_64-gnu
+            deps: ["gcc-mingw-w64-x86-64-posix"]
+            extension: ".exe"
+
+    container:
+      image: rust:slim-bookworm
+      env:
+        RUSTFLAGS: -Csymbol-mangling-version=v0
+
+    env:
+      TARGET: ${{ matrix.target.triple }}
+      ASSET_NAME: versed-${{ matrix.target.name }}${{ matrix.target.extension }}
+      DEPENDENCIES: ${{ join(matrix.target.deps, ' ') }}
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: /versed/
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          path: repo
+
+      - name: Move repository to working directory
+        run: mv "$GITHUB_WORKSPACE/repo/" /versed/
+        working-directory: /
+
+      - name: Install Rust
+        run: rustup target add "$TARGET"
+      - name: Install cross-compilation dependencies
+        run: apt update && apt install -y $DEPENDENCIES
+
+      - name: Build executable
+        run: cargo build --release --target "$TARGET"
+
+      - name: Rename executable
+        run: cp "target/$TARGET/release/versed${{ matrix.target.extension }}" "$ASSET_NAME"
+      - name: Hash executable
+        run: sha256sum "$ASSET_NAME"
+
+      - name: Upload asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: /versed/${{ env.ASSET_NAME }}
