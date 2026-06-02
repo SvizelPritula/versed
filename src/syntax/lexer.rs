@@ -3,8 +3,9 @@ use chumsky::{
     error::Rich,
     extra,
     prelude::{any, choice, empty, just, none_of, via_parser},
-    text::{digits, ident, whitespace},
+    text::{TextExpected, digits},
 };
+use icu_properties::props::{BinaryProperty, WhiteSpace, XidContinue, XidStart};
 
 use crate::syntax::{
     ExtendVec, Span, Spanned,
@@ -12,6 +13,20 @@ use crate::syntax::{
 };
 
 pub type Error<'src> = Rich<'src, char, Span>;
+
+fn whitespace<'src>() -> impl Parser<'src, &'src str, char, extra::Err<Error<'src>>> + Copy {
+    any()
+        .filter(|c| WhiteSpace::for_char(*c))
+        .labelled_with(|| TextExpected::<char>::Whitespace)
+}
+
+fn ident<'src>() -> impl Parser<'src, &'src str, &'src str, extra::Err<Error<'src>>> + Copy {
+    any()
+        .filter(|c| XidStart::for_char(*c) || *c == '_')
+        .then(any().filter(|c| XidContinue::for_char(*c)).repeated())
+        .to_slice()
+        .labelled(TextExpected::<char>::AnyIdentifier)
+}
 
 pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<Spanned<Token>>, extra::Err<Error<'src>>> {
     const REPLACEMENT_CHARACTER: char = '\u{FFFD}';
@@ -114,7 +129,7 @@ pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<Spanned<Token>>, extra:
 
     let comment = just("//").ignore_then(none_of("\r\n").repeated());
 
-    let skip = whitespace().then(comment.then_ignore(whitespace()).repeated());
+    let skip = whitespace().ignored().or(comment).repeated();
 
     let body = token
         .map_with(|tok, e| (tok, e.span()))
