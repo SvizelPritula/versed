@@ -100,7 +100,7 @@ pub fn resolve_names<'filename>(
     }
 }
 
-fn resolve_type<'filename>(
+fn resolve_type(
     r#type: Type<SpanMetadata>,
     context: &mut ResolutionContext,
 ) -> Type<BasicMetadata> {
