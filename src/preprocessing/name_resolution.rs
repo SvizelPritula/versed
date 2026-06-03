@@ -27,6 +27,13 @@ struct NameInfo {
     span: Span,
 }
 
+#[derive(Debug)]
+struct ResolutionContext<'a, 'filename> {
+    names: HashMap<String, NameInfo>,
+    filename: &'filename str,
+    reports: &'a mut Reports<'filename>,
+}
+
 pub fn resolve_names<'filename>(
     TypeSet {
         version,
@@ -59,6 +66,12 @@ pub fn resolve_names<'filename>(
         }
     }
 
+    let mut context = ResolutionContext {
+        names,
+        filename,
+        reports,
+    };
+
     let types = types
         .into_iter()
         .map(
@@ -68,7 +81,7 @@ pub fn resolve_names<'filename>(
                  metadata,
              }| NamedType {
                 name,
-                r#type: resolve_type(r#type, &names, filename, reports),
+                r#type: resolve_type(r#type, &mut context),
                 metadata: BasicInfo {
                     resolution: (),
                     span: metadata,
@@ -89,9 +102,7 @@ pub fn resolve_names<'filename>(
 
 fn resolve_type<'filename>(
     r#type: Type<SpanMetadata>,
-    names: &HashMap<String, NameInfo>,
-    filename: &'filename str,
-    reports: &mut Reports<'filename>,
+    context: &mut ResolutionContext,
 ) -> Type<BasicMetadata> {
     let Type {
         r#type,
@@ -106,8 +117,8 @@ fn resolve_type<'filename>(
                     .iter()
                     .map(|Field { name, metadata, .. }| (name.as_str(), metadata.name)),
                 "field",
-                filename,
-                reports,
+                context.filename,
+                context.reports,
             );
 
             let fields = fields
@@ -119,7 +130,7 @@ fn resolve_type<'filename>(
                          metadata,
                      }| Field {
                         name,
-                        r#type: resolve_type(r#type, names, filename, reports),
+                        r#type: resolve_type(r#type, context),
                         metadata: BasicInfo {
                             resolution: (),
                             span: metadata,
@@ -142,8 +153,8 @@ fn resolve_type<'filename>(
                     .iter()
                     .map(|Variant { name, metadata, .. }| (name.as_str(), metadata.name)),
                 "variant",
-                filename,
-                reports,
+                context.filename,
+                context.reports,
             );
 
             let variants = variants
@@ -155,7 +166,7 @@ fn resolve_type<'filename>(
                          metadata,
                      }| Variant {
                         name,
-                        r#type: resolve_type(r#type, names, filename, reports),
+                        r#type: resolve_type(r#type, context),
 
                         metadata: BasicInfo {
                             resolution: (),
@@ -175,7 +186,7 @@ fn resolve_type<'filename>(
             })
         }
         TypeType::List(List { r#type, metadata }) => TypeType::List(List {
-            r#type: Box::new(resolve_type(*r#type, names, filename, reports)),
+            r#type: Box::new(resolve_type(*r#type, context)),
 
             metadata: BasicInfo {
                 resolution: (),
@@ -193,13 +204,13 @@ fn resolve_type<'filename>(
             ident,
             metadata: span_metadata,
         }) => {
-            let index = if let Some(&NameInfo { index, .. }) = names.get(&ident) {
+            let index = if let Some(&NameInfo { index, .. }) = context.names.get(&ident) {
                 index
             } else {
-                reports.add_fatal(make_simple_report(
+                context.reports.add_fatal(make_simple_report(
                     format!("unknown type '{ident}'"),
                     metadata.r#type,
-                    filename,
+                    context.filename,
                 ));
 
                 INVALID_INDEX

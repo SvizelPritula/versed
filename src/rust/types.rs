@@ -11,7 +11,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy)]
-struct Context<'a> {
+struct TypeCodegenContext<'a> {
     pub naming: NamingContext<'a, RustMetadata>,
     pub options: &'a RustOptions,
 }
@@ -23,7 +23,7 @@ pub fn emit_types(
 ) -> Result<()> {
     let used_type_names = all_rust_type_names(types, GetIdentity);
 
-    let context = Context {
+    let context = TypeCodegenContext {
         naming: NamingContext {
             types,
             used_type_names: &used_type_names,
@@ -52,7 +52,7 @@ pub fn emit_types(
 
 fn emit_type_recursive(
     writer: &mut SourceWriter<impl Write>,
-    context: Context,
+    context: TypeCodegenContext,
     r#type: &Type<RustMetadata>,
 ) -> Result<()> {
     match &r#type.r#type {
@@ -80,7 +80,7 @@ fn emit_type_recursive(
 
 fn emit_struct(
     writer: &mut SourceWriter<impl Write>,
-    context: Context,
+    context: TypeCodegenContext,
     r#struct: &Struct<RustMetadata>,
     name: &str,
 ) -> Result<()> {
@@ -113,7 +113,7 @@ fn emit_struct(
 
 fn emit_enum(
     writer: &mut SourceWriter<impl Write>,
-    context: Context,
+    context: TypeCodegenContext,
     r#enum: &Enum<RustMetadata>,
     name: &str,
 ) -> Result<()> {
@@ -149,7 +149,7 @@ fn emit_enum(
 
 fn emit_type_alias(
     writer: &mut SourceWriter<impl Write>,
-    context: Context,
+    context: TypeCodegenContext,
     r#type: &NamedType<RustMetadata>,
 ) -> Result<()> {
     let r#type = &r#type.r#type;
@@ -178,7 +178,7 @@ fn emit_type_alias(
 
 fn write_type_name(
     writer: &mut SourceWriter<impl Write>,
-    context: Context,
+    context: TypeCodegenContext,
     r#type: &Type<RustMetadata>,
 ) -> Result<()> {
     codegen::write_type_name(
@@ -191,7 +191,7 @@ fn write_type_name(
     )
 }
 
-fn write_derive(writer: &mut SourceWriter<impl Write>, context: Context) -> Result<()> {
+fn write_derive(writer: &mut SourceWriter<impl Write>, context: TypeCodegenContext) -> Result<()> {
     writer.write("#[derive(")?;
 
     for (index, name) in context.options.derives.iter().enumerate() {
