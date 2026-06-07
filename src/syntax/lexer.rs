@@ -20,10 +20,17 @@ fn whitespace<'src>() -> impl Parser<'src, &'src str, char, extra::Err<Error<'sr
         .labelled_with(|| TextExpected::<char>::Whitespace)
 }
 
+fn ident_start<'src>() -> impl Parser<'src, &'src str, char, extra::Err<Error<'src>>> + Copy {
+    any().filter(|c| XidStart::for_char(*c) || *c == '_')
+}
+
+fn ident_continue<'src>() -> impl Parser<'src, &'src str, char, extra::Err<Error<'src>>> + Copy {
+    any().filter(|c| XidContinue::for_char(*c))
+}
+
 fn ident<'src>() -> impl Parser<'src, &'src str, &'src str, extra::Err<Error<'src>>> + Copy {
-    any()
-        .filter(|c| XidStart::for_char(*c) || *c == '_')
-        .then(any().filter(|c| XidContinue::for_char(*c)).repeated())
+    ident_start()
+        .then(ident_continue().repeated())
         .to_slice()
         .labelled(TextExpected::<char>::AnyIdentifier)
 }
@@ -109,7 +116,8 @@ pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<Spanned<Token>>, extra:
     let number = digits(10)
         .at_least(1)
         .to_slice()
-        .map(|n: &str| Token::Number(n.to_owned()));
+        .map(|n: &str| Token::Number(n.to_owned()))
+        .then_ignore(ident_start().not().recover_with(via_parser(empty())));
 
     let punct_or_group = choice([
         just('=').to(Token::Punct(Punct::Equals)),
