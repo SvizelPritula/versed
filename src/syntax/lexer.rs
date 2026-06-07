@@ -5,7 +5,9 @@ use chumsky::{
     prelude::{any, choice, empty, just, none_of, via_parser},
     text::{TextExpected, digits},
 };
-use icu_properties::props::{BinaryProperty, WhiteSpace, XidContinue, XidStart};
+use icu_properties::props::{
+    BinaryProperty, EnumeratedProperty, GeneralCategory, WhiteSpace, XidContinue, XidStart,
+};
 
 use crate::syntax::{
     ExtendVec, Span, Spanned,
@@ -87,7 +89,7 @@ pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<Spanned<Token>>, extra:
 
     let string_char = none_of("\\\"\r\n")
         .validate(|c: char, e, emitter| {
-            if c.is_control() {
+            if GeneralCategory::for_char(c) == GeneralCategory::Control {
                 emitter.emit(Rich::custom(
                     e.span(),
                     format!(
