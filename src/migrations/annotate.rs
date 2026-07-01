@@ -1,7 +1,5 @@
 use std::collections::HashSet;
 
-use chumsky::container::Container;
-
 use crate::{
     ast::{Type, TypeSet, TypeType},
     codegen::file_patching::{AddEdit, RemoveEdit},
@@ -76,7 +74,7 @@ fn annotate_type(r#type: &Type<BasicMetadata>, context: &mut AnnotationContext) 
 
 fn collect_used_numbers(r#type: &Type<BasicMetadata>, numbers: &mut HashSet<u64>) {
     if let Some(number) = r#type.number {
-        numbers.push(number);
+        numbers.insert(number);
     }
 
     match &r#type.r#type {

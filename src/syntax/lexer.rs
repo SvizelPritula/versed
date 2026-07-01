@@ -10,7 +10,7 @@ use icu_properties::props::{
 };
 
 use crate::syntax::{
-    ExtendVec, Span, Spanned,
+    FromIterFlatten, Span, Spanned,
     tokens::{Group, Keyword, Punct, Token},
 };
 
@@ -148,7 +148,7 @@ pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<Spanned<Token>>, extra:
         .then_ignore(skip)
         .repeated()
         .collect()
-        .map(|ExtendVec(inner)| inner);
+        .map(|FromIterFlatten(inner)| inner);
 
     skip.ignore_then(body)
 }

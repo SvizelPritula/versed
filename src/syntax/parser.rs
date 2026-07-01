@@ -17,7 +17,7 @@ use crate::{
         Type, TypeSet, TypeType, Variant,
     },
     syntax::{
-        ExtendVec, MemberSpanInfo, Span, SpanMetadata, TypeSetSpanInfo, TypeSpanInfo,
+        FromIterFlatten, MemberSpanInfo, Span, SpanMetadata, TypeSetSpanInfo, TypeSpanInfo,
         tokens::{Group, Keyword, Punct, Token},
     },
 };
@@ -173,7 +173,7 @@ fn composite<'tokens, I: Input<'tokens>, F, T>(
         )
         .allow_trailing()
         .collect()
-        .map(|ExtendVec(inner)| inner)
+        .map(|FromIterFlatten(inner)| inner)
         .delimited_by(left(Group::Brace), right(Group::Brace));
 
     keyword(leading_keyword).ignore_then(body).map(map_type)
@@ -337,7 +337,7 @@ fn schema_parser<'tokens, I: Input<'tokens>>(
         ))
         .repeated()
         .collect()
-        .map(|ExtendVec(inner)| inner);
+        .map(|FromIterFlatten(inner)| inner);
 
     version
         .then(types)

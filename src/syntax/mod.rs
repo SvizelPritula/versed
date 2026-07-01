@@ -1,9 +1,7 @@
 use std::{fmt::Display, ops::Range};
 
 use ariadne::{Color, Label, Report, ReportKind};
-use chumsky::{
-    Parser, container::Container, error::Rich, extra, input::Input as _, span::SimpleSpan,
-};
+use chumsky::{Parser, error::Rich, extra, input::Input as _, span::SimpleSpan};
 
 use crate::{
     ast::{Migration, TypeSet},
@@ -153,23 +151,14 @@ impl Metadata for SpanMetadata {
 }
 
 #[derive(Debug, Clone)]
-struct ExtendVec<T>(Vec<T>);
+struct FromIterFlatten<Collection>(Collection);
 
-impl<T> Default for ExtendVec<T> {
-    fn default() -> Self {
-        Self(vec![])
-    }
-}
-
-impl<I, T> Container<I> for ExtendVec<T>
+impl<Collection, Item, Inner> FromIterator<Inner> for FromIterFlatten<Collection>
 where
-    I: IntoIterator<Item = T>,
+    Collection: FromIterator<Item>,
+    Inner: IntoIterator<Item = Item>,
 {
-    fn push(&mut self, item: I) {
-        self.0.extend(item);
-    }
-
-    fn with_capacity(n: usize) -> Self {
-        Self(Vec::with_capacity(n))
+    fn from_iter<U: IntoIterator<Item = Inner>>(iter: U) -> Self {
+        FromIterFlatten(iter.into_iter().flatten().collect())
     }
 }
