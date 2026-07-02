@@ -263,6 +263,7 @@ fn check_unique<'a, 'filename>(
 
 #[derive(Debug, Clone, Copy)]
 pub struct ResolutionMetadata;
+
 impl Metadata for ResolutionMetadata {
     type Type = ();
     type TypeSet = ();

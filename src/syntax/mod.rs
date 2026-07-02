@@ -135,6 +135,7 @@ pub struct TypeSetSpanInfo {
 
 #[derive(Debug, Clone, Copy)]
 pub struct SpanMetadata;
+
 impl Metadata for SpanMetadata {
     type Type = TypeSpanInfo;
     type TypeSet = TypeSetSpanInfo;

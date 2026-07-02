@@ -89,7 +89,7 @@ impl NamingRules for RustMigrationSuffixNamingRules {
         (SnakeCase, RustIdentRules)
     }
     // Some of these are not actually used.
-    // It would be nice to redesing the naming pass to be modular.
+    // It would be nice to redesign the naming pass to be modular.
     fn field(&self) -> impl NamingRule {
         (SnakeCase, RustIdentRules)
     }
