@@ -301,7 +301,7 @@ fn load_migration(file: &Path) -> Result<Migration<BasicMetadata>, Error> {
     let mut reports = Reports::default();
 
     let migration = parse_migration(&src, &mut reports, &filename);
-    let migration = migration.map(|m| m.map(|types| preprocess(types, &mut reports, &filename)));
+    let migration = migration.map(|m| migrations::preprocess(m, &mut reports, &filename));
 
     handle_reports(&reports, &filename, &src)?;
     migration.ok_or(Error::MalformedFile)

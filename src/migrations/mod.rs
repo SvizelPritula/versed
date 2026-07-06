@@ -7,13 +7,14 @@ use std::{
 use ariadne::{Color, Label, Report, ReportKind};
 
 use crate::{
-    ast::TypeSet,
+    ast::{Migration, TypeSet},
     codegen::file_patching::{add_extention, apply_add_edits, apply_remove_edits, concat_files},
     error::{Error, ResultExt},
     handle_reports, load_file_with_source,
     migrations::annotate::{annotate, strip_annotations},
-    preprocessing::BasicMetadata,
+    preprocessing::{self, BasicMetadata},
     reports::Reports,
+    syntax::SpanMetadata,
 };
 
 pub use pairing::{TypePair, pair_types};
@@ -49,7 +50,8 @@ pub fn finish(new_path: &Path, migration_path: &Path) -> Result<(), Error> {
     let (old_types, old_src) = load_file_with_source(&old_path)?;
 
     let filename = new_path.to_string_lossy();
-    let reports = check_versions(&new_types, &old_types, &filename);
+    let mut reports = Reports::default();
+    check_versions(&new_types, &old_types, &mut reports, &filename);
     handle_reports(&reports, &filename, &new_src)?;
 
     concat_files(&old_src, &new_src, migration_path).with_path(migration_path)?;
@@ -65,13 +67,23 @@ pub fn finish(new_path: &Path, migration_path: &Path) -> Result<(), Error> {
     Ok(())
 }
 
+pub fn preprocess<'filename>(
+    migration: Migration<SpanMetadata>,
+    reports: &mut Reports<'filename>,
+    filename: &'filename str,
+) -> Migration<BasicMetadata> {
+    let migration = migration.map(|types| preprocessing::preprocess(types, reports, filename));
+    check_versions(&migration.new, &migration.old, reports, filename);
+
+    migration
+}
+
 fn check_versions<'filename>(
     new: &TypeSet<BasicMetadata>,
     old: &TypeSet<BasicMetadata>,
+    reports: &mut Reports<'filename>,
     filename: &'filename str,
-) -> Reports<'filename> {
-    let mut reports = Reports::default();
-
+) {
     if new.version == old.version {
         let message = "the new schema has the same version as the old schema";
 
@@ -90,6 +102,4 @@ fn check_versions<'filename>(
 
         reports.add_fatal(report);
     }
-
-    reports
 }
