@@ -46,7 +46,7 @@ fn write_to_directory(types: &TypeSet<TypeScriptMetadata>, path: &Path) -> Resul
     write_to_file(types, &type_path, true)?;
 
     let index_path = path.join("index.ts");
-    add_import_to_file(mod_name, &index_path)?;
+    add_reexport_to_file(mod_name, &index_path)?;
 
     Ok(())
 }
@@ -69,10 +69,10 @@ fn write_to_file(
     Ok(())
 }
 
-fn add_import_to_file(module_name: &str, path: &Path) -> Result<(), Error> {
+fn add_reexport_to_file(module_name: &str, path: &Path) -> Result<(), Error> {
     add_line_to_file(
         path,
-        format_args!("import * as {module_name} from \"./{module_name}\";"),
+        format_args!("export * as {module_name} from \"./{module_name}\";"),
     )
     .with_path(path)
 }

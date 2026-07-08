@@ -12,9 +12,10 @@ mod utils;
 fn check_with_version(schema: &str, version: &str) {
     let dir = tempdir().unwrap();
 
-    let index_path = dir.path().join("index.ts");
-    let index_content = format!("let a: object = {version};\n");
-    fs::write(&index_path, index_content).unwrap();
+    let entrypoint_path = dir.path().join("main.ts");
+    let entrypoint_content =
+        format!("import {{ {version} }} from \"index\";\nlet a: object = {version};\n");
+    fs::write(&entrypoint_path, entrypoint_content).unwrap();
 
     let schema_path = dir.path().join("schema.vd");
     fs::write(&schema_path, schema).unwrap();
@@ -28,7 +29,7 @@ fn check_with_version(schema: &str, version: &str) {
 
     Command::new(TSC_COMMAND)
         .args(TSC_OPTIONS)
-        .arg(index_path)
+        .arg(entrypoint_path)
         .run_and_check();
 }
 

@@ -109,8 +109,10 @@ fn roundtrip() {
     let typescript_path = dir.path().join("typescript");
     fs::create_dir(&typescript_path).unwrap();
 
-    let index_path = typescript_path.join("index.ts");
-    fs::write(&index_path, format!("let user: v1.User = {json};\n")).unwrap();
+    let entrypoint_path = typescript_path.join("main.ts");
+    let entrypoint_content =
+        format!("import {{ v1 }} from \"index\";\nlet user: v1.User = {json};\n");
+    fs::write(&entrypoint_path, entrypoint_content).unwrap();
 
     Command::new(env!("CARGO_BIN_EXE_versed"))
         .arg("typescript")
@@ -121,6 +123,6 @@ fn roundtrip() {
 
     Command::new(TSC_COMMAND)
         .args(TSC_OPTIONS)
-        .arg(index_path)
+        .arg(entrypoint_path)
         .run_and_check();
 }
