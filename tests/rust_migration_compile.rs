@@ -430,3 +430,29 @@ fn version_named_like_upgrade() {
         "},
     );
 }
+
+#[test]
+fn type_named_like_version() {
+    check_with_mod(
+        indoc! {r#"
+            version _2;
+
+            _ = #1 struct { a: #2 string };
+        "#},
+        indoc! {r#"
+            version _;
+
+            _ = #1 struct { a: #2 int };
+        "#},
+        indoc! {"
+            #![allow(unused_imports)]
+
+            use _2::__ as _;
+            use __::__ as _;
+            use migrations::__::upgrade::upgrade___;
+            use migrations::__::downgrade::downgrade___;
+
+            fn main() {}
+        "},
+    );
+}

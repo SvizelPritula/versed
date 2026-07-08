@@ -51,6 +51,21 @@ fn rust_library_idents() {
 }
 
 #[test]
+fn rust_macro_idents() {
+    check(indoc! {r#"
+        version v1;
+
+        assert = struct {
+            assert: int
+        };
+
+        todo = enum {
+            todo: int
+        };
+    "#});
+}
+
+#[test]
 fn keyword_idents() {
     check(indoc! {r#"
         version v1;
