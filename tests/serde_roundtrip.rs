@@ -111,7 +111,7 @@ fn roundtrip() {
 
     let entrypoint_path = typescript_path.join("main.ts");
     let entrypoint_content =
-        format!("import {{ v1 }} from \"index\";\nlet user: v1.User = {json};\n");
+        format!("import {{ v1 }} from \"./index\";\nlet user: v1.User = {json};\n");
     fs::write(&entrypoint_path, entrypoint_content).unwrap();
 
     Command::new(env!("CARGO_BIN_EXE_versed"))

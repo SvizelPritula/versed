@@ -14,7 +14,7 @@ fn check_with_version(schema: &str, version: &str) {
 
     let entrypoint_path = dir.path().join("main.ts");
     let entrypoint_content =
-        format!("import {{ {version} }} from \"index\";\nlet a: object = {version};\n");
+        format!("import {{ {version} }} from \"./index\";\nlet a: object = {version};\n");
     fs::write(&entrypoint_path, entrypoint_content).unwrap();
 
     let schema_path = dir.path().join("schema.vd");
