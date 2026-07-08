@@ -39,16 +39,14 @@ to generate corresponding Rust type declarations:
 
 ```rs
 // src/schema/v1.rs
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, ::serde::Serialize, ::serde::Serialize)]
 pub struct User {
     pub name: String,
     pub age: UserAge,
     pub contacts: Vec<Contact>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, ::serde::Serialize, ::serde::Serialize)]
 #[serde(tag = "type", content = "value")]
 pub enum UserAge {
     #[serde(rename = "known")]
@@ -57,7 +55,7 @@ pub enum UserAge {
     Unknown(()),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, ::serde::Serialize, ::serde::Serialize)]
 #[serde(tag = "type", content = "value")]
 pub enum Contact {
     #[serde(rename = "phone")]
@@ -68,7 +66,7 @@ pub enum Contact {
     Address(ContactAddress),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, ::serde::Serialize, ::serde::Serialize)]
 pub struct ContactAddress {
     pub street: String,
     pub city: String,

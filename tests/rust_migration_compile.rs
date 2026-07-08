@@ -87,36 +87,7 @@ mod unchanged {
     }
 
     include!("utils/test_schemas.inc.rs");
-
-    #[test]
-    fn rust_type_idents() {
-        check(indoc! {r#"
-            version v1;
-
-            String = unit;
-
-            "" = struct {
-                vec: struct {}
-            };
-
-            Option = struct {
-                a: string,
-                b: [int],
-            };
-        "#});
-    }
-
-    #[test]
-    fn keyword_idents() {
-        check(indoc! {r#"
-            version v1;
-
-            "struct" = struct {
-                box: int,
-                self: int,
-            };
-        "#});
-    }
+    include!("utils/rust_schemas.inc.rs");
 
     #[test]
     fn complex_example() {

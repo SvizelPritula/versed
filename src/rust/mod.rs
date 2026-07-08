@@ -43,7 +43,10 @@ impl RustOptions {
         let mut derives = vec![Cow::Borrowed("Debug"), Cow::Borrowed("Clone")];
 
         if serde {
-            derives.extend([Cow::Borrowed("Serialize"), Cow::Borrowed("Deserialize")]);
+            derives.extend([
+                Cow::Borrowed("::serde::Serialize"),
+                Cow::Borrowed("::serde::Deserialize"),
+            ]);
         }
 
         derives.extend(extra_derives.into_iter().map(Cow::Owned));

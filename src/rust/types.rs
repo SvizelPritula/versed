@@ -31,11 +31,6 @@ pub fn emit_types(
         options,
     };
 
-    if context.options.serde {
-        writer.write_nl(r"use serde::{Deserialize, Serialize};")?;
-        writer.blank_line();
-    }
-
     for r#type in &types.types {
         if needs_type_alias(&r#type.r#type) {
             emit_type_alias(writer, context, r#type)?;
