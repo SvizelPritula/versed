@@ -113,7 +113,7 @@ fn emit_enum(
     name: &str,
 ) -> Result<()> {
     write_derive(writer, context)?;
-    if context.options.serde {
+    if context.options.serde && !context.options.serde_external_tag {
         writer.write_nl(r#"#[serde(tag = "type", content = "value")]"#)?;
     }
 

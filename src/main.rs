@@ -133,6 +133,9 @@ enum RustCommand {
         /// Derive Serialize and Deserialize and add appropriate attributes from the serde crate
         #[arg(short = 's', long)]
         serde: bool,
+        /// Use externally tagged representation for enums when serializing using serde
+        #[arg(long)]
+        serde_external_tag: bool,
     },
     /// Generate migration
     Migration {
@@ -230,8 +233,14 @@ fn run_command(args: Args) -> Result<(), Error> {
                     to_file,
                     derive,
                     serde,
+                    serde_external_tag,
                 },
-        } => rust::generate_types(&file, &output, to_file, &RustOptions::new(serde, derive))?,
+        } => rust::generate_types(
+            &file,
+            &output,
+            to_file,
+            &RustOptions::new(serde, derive, serde_external_tag),
+        )?,
         Command::Rust {
             command:
                 RustCommand::Migration {

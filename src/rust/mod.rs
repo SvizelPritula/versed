@@ -36,10 +36,11 @@ mod types;
 pub struct RustOptions {
     serde: bool,
     derives: Vec<Cow<'static, str>>,
+    serde_external_tag: bool,
 }
 
 impl RustOptions {
-    pub fn new(serde: bool, extra_derives: Vec<String>) -> Self {
+    pub fn new(serde: bool, extra_derives: Vec<String>, serde_external_tag: bool) -> Self {
         let mut derives = vec![Cow::Borrowed("Debug"), Cow::Borrowed("Clone")];
 
         if serde {
@@ -51,13 +52,17 @@ impl RustOptions {
 
         derives.extend(extra_derives.into_iter().map(Cow::Owned));
 
-        Self { serde, derives }
+        Self {
+            serde,
+            derives,
+            serde_external_tag,
+        }
     }
 }
 
 impl Default for RustOptions {
     fn default() -> Self {
-        Self::new(false, vec![])
+        Self::new(false, vec![], false)
     }
 }
 
