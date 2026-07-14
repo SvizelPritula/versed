@@ -9,6 +9,8 @@ and deserialized again in any supported language.
 It also supports scaffolding migration functions in Rust
 that convert the data types between versions using interactive migrations.
 
+See the [documentation](docs/README.md) for a detailed description of Versed.
+
 ## Installation
 
 You can install the `versed` command from [crates.io](https://crates.io/crates/versed)
@@ -18,12 +20,14 @@ using [Cargo](https://github.com/rust-lang/cargo):
 cargo install versed
 ```
 
+This will install the `versed` command globally for the current user.
 Pre-compiled binaries are also available for Windows and Linux
 as attachments of [GitHub releases](https://github.com/SvizelPritula/versed/releases).
 
 ## Compiling from source
 
-To build the source code, simply run: 
+To build the source code,
+simply run the following command in the root of the repository:
 
 ```sh
 cargo build --release
