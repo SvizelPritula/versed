@@ -9,6 +9,29 @@ and deserialized again in any supported language.
 It also supports scaffolding migration functions in Rust
 that convert the data types between versions using interactive migrations.
 
+## Installation
+
+You can install the `versed` command from [crates.io](https://crates.io/crates/versed)
+using [Cargo](https://github.com/rust-lang/cargo):
+
+```sh
+cargo install versed
+```
+
+Pre-compiled binaries are also available for Windows and Linux
+as attachments of [GitHub releases](https://github.com/SvizelPritula/versed/releases).
+
+## Compiling from source
+
+To build the source code, simply run: 
+
+```sh
+cargo build --release
+```
+
+The compiled binary will be located in `target/release/versed[.exe]`.
+You can also use `cargo run [--release]` to compile and run the program.
+
 ## Example
 
 Given a schema like this:
@@ -114,9 +137,9 @@ export type Contact = (
 `versed` automatically converts identifiers based on the naming convention of the target language,
 i.e. PascalCase/snake_case for Rust and PascalCase/camelCase/kebab-case for TypeScript.
 
-The main feature of `versed` is its interactive migrations.
+The main feature of `versed` is its _interactive migrations_.
 You can use `versed migration begin schema.vs` to start,
-which will add migration markers to the schema file:
+which will add _migration markers_ to the schema file:
 
 ```
 // schema.vs
@@ -257,194 +280,8 @@ pub mod downgrade {
 }
 ```
 
-## Usage
-
-There are two commands related to type generation,
-`versed rust types` and `versed typescript types`.
-Both take two arguments, the path to the schema and the path to the output directory,
-in that order.
-Versed will write the generated types to a new file inside the output directory
-named after the version of the schema.
-For example, if you run `versed rust types schema.vs src/schema/`
-and `schema.vs` starts with `version v1;`,
-then the types will be written to `src/schema/v1.rs`.
-It will also add an import of this file to `mod.rs` or `index.ts`.
-The directory will be created if it doesn't exist.
-
-You can also use the `-f` or `--to-file` flag to write the types directly to a specified file,
-which will cause the second argument to be interpreted as the path to that file
-instead of a directory.
-For example, `versed rust types schema.vs -f src/current-schema.rs` will simply
-write the types to `src/current-schema.rs`.
-
-If you only want to check if a schema file is syntactically and semantically well-formed,
-you can use `versed check`.
-There is also `versed version`, which will additionally
-output the version of the schema.
-
-As for migrations, there are two commands used for creating a migration file
-and one for generating the migration functions.
-The `versed migration begin` command starts the interactive migration.
-It takes the path to the schema file containing the old version,
-saves a copy of it and adds migration markers to it.
-You can then edit the file as you wish.
-The `versed migration finish` command ends the migration
-and creates the migration file.
-Lastly, `versed rust migration` works like `versed rust types`,
-except it generates migration functions instead of type declarations.
-For example, you could use `versed migration begin schema.vs` to start the migration,
-`versed migration finish schema.vs schema.vsm` to end it
-and `versed rust migration schema.vs src/schema/` to create the migration functions.
-
-There is also a `versed migration check` command that corresponds to `versed check`.
-
-Lastly, there is `versed completions`, which prints out a script for providing tab-completion
-for `versed` for the specified shell.
-For example, you can install tab-completions for bash like this:
-
-```sh
-versed completions bash > ~/.local/share/bash-completion/completions/versed
-```
-
-You can run `versed help` for a more detailed usage description.
-
-## Schema files
-
-Schema files consist of a version header and any number of named types.
-
-### Version header
-
-Schema files must start with their version, like so:
-
-```
-version v1;
-```
-
-The version name is used to name the generated Rust module.
-This way you can have multiple versions of the same schema in your project.
-
-### Named types
-
-A schema may contain any number of (uniquely) named types.
-Each consists of a name, an equal sign, the type itself and a semicolon:
-
-```
-Keyword = string;
-```
-
-There are five types of types to choose from.
-
-### Primitive types
-
-There are currently three primitive types:
-
-| Name     | Contents                                                                         | Equivalent Rust type | Equivalent TypeScript type |
-| -------- | -------------------------------------------------------------------------------- | -------------------- | -------------------------- |
-| `int`    | a 64-bit signed integer                                                          | `i64`                | `number`                   |
-| `string` | a sequence of Unicode code points                                                | `String`             | `string`                   |
-| `unit`   | the [unit type](https://en.wikipedia.org/wiki/Unit_type) with one possible value | `()`                 | `null`                     |
-
-### Lists
-
-Any type can be surrounded by square brackets to turn it into a list:
-
-```
-Vector = [int];
-Matrix = [[int]];
-```
-
-In Rust, lists are translated to `Vec`s.
-
-### Structs
-
-Structs are composite types with zero or more fields, like `struct`s in Rust:
-
-```
-User = struct {
-    id: int,
-    name: string,
-};
-```
-
-Structs can be nested:
-
-```
-User = struct {
-    id: int,
-    name: struct {
-        first: string,
-        last: string,
-    },
-};
-```
-
-### Enums
-
-Enums represent [tagged unions](https://en.wikipedia.org/wiki/Tagged_union), like `enum`s in Rust.
-An enum has several variants, each a possible value that the enum can take:
-
-```
-Element = enum {
-    heading: string,
-    paragraph: string,
-    image: struct {
-        url: string,
-        width: int,
-    },
-    horizontal_line: unit,
-};
-```
-
-As you can see, enums and structs can be freely nested.
-The type of a variant can be omitted, in which case it defaults to `unit`:
-
-```
-Color = enum {
-    red,
-    green,
-    blue,
-};
-```
-
-### Identifiers
-
-You can also refer directly to named types using their name:
-
-```
-User = struct {
-    name: Name,
-    email: Email,
-    friends: [Friend],
-};
-
-Name = struct {
-    first: string,
-    last: string,
-};
-Email = string;
-Friend = struct { name: Name };
-```
-
-Types can also be recursive:
-
-```
-Category = struct {
-    name: string,
-    subcategories: [Category],
-};
-```
-
-`versed` will sometimes have to insert `Box`es
-into the generated Rust type declarations to make that work.
-
-## Installation
-
-You can install the `versed` command from [crates.io](https://crates.io/crates/versed)
-using [Cargo](https://github.com/rust-lang/cargo):
-
-```sh
-cargo install versed
-```
+See the [documentation](docs/README.md) for a detailed description
+of the [schema language](docs/language.md) and the [compiler](docs/usage.md).
 
 ## License
 

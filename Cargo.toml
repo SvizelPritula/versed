@@ -8,8 +8,9 @@ license = "Apache-2.0"
 description = "A tool for generating DTOs and their migrations from schema descriptions"
 categories = ["command-line-utilities", "development-tools", "encoding"]
 repository = "https://github.com/SvizelPritula/versed"
+documentation = "https://github.com/SvizelPritula/versed/tree/main/docs"
 
-exclude = ["/docs/", "/.github/"]
+exclude = ["/.github/"]
 
 [dependencies]
 anstream = "1.0.0"
