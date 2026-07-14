@@ -13,7 +13,7 @@ Versed's documentation is split into several parts:
   of interactive migrations (Section 5.2),
   the generated migration functions (Section 6.3),
   many examples for interactive migrations (Chapter 7),
-  and much more.
+  and much, much more.
 - [The developer's guide](development.md)
   — A short overview of Versed's architecture
   and instructions on how to build the source code documentation.

@@ -14,7 +14,9 @@ use crate::{
     },
     composite,
     error::{Error, ResultExt},
-    getter, load_file, load_migration, mapper,
+    getter,
+    loading::{load_file, load_migration},
+    mapper,
     migrations::{TypePair, pair_types},
     preprocessing::{BasicMetadata, ResolutionMetadata},
     rust::{

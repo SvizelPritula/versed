@@ -1,6 +1,5 @@
 use std::{
     fmt::Display,
-    fs,
     io::{BufWriter, Write, stdout},
     path::{Path, PathBuf},
     process::ExitCode,
@@ -8,22 +7,17 @@ use std::{
 
 use anstream::stderr;
 use anstyle::{AnsiColor, Color, Style};
-use ariadne::Source;
 use clap::{CommandFactory, Parser, Subcommand, ValueHint};
 use clap_complete::{Generator, Shell};
 
 use crate::{
-    ast::{Migration, TypeSet},
-    error::{Error, ResultExt},
-    preprocessing::{BasicMetadata, preprocess},
-    reports::Reports,
-    rust::RustOptions,
-    syntax::{parse_migration, parse_schema},
+    ast::TypeSet, error::{Error, ResultExt}, loading::{load_file, load_migration}, rust::RustOptions,
 };
 
 pub mod ast;
 pub mod codegen;
 pub mod error;
+pub mod loading;
 pub mod metadata;
 pub mod migrations;
 pub mod preprocessing;
@@ -285,50 +279,4 @@ fn print_completions(shell: Shell) -> Result<(), Error> {
         .try_generate(&command, &mut file)
         .and_then(|()| file.flush())
         .with_stdout()
-}
-
-/// Loads and parses the file, printing any errors
-fn load_file(file: &Path) -> Result<TypeSet<BasicMetadata>, Error> {
-    load_file_with_source(file).map(|(types, _)| types)
-}
-
-fn load_file_with_source(file: &Path) -> Result<(TypeSet<BasicMetadata>, String), Error> {
-    let filename = file.to_string_lossy();
-    let src = fs::read_to_string(file).with_path(file)?;
-    let mut reports = Reports::default();
-
-    let ast = parse_schema(&src, &mut reports, &filename);
-    let ast = ast.map(|types| preprocess(types, &mut reports, &filename));
-
-    handle_reports(&reports, &filename, &src)?;
-    ast.ok_or(Error::MalformedFile).map(|ast| (ast, src))
-}
-
-fn load_migration(file: &Path) -> Result<Migration<BasicMetadata>, Error> {
-    let filename = file.to_string_lossy();
-    let src = fs::read_to_string(file).with_path(file)?;
-    let mut reports = Reports::default();
-
-    let migration = parse_migration(&src, &mut reports, &filename);
-    let migration = migration.map(|m| migrations::preprocess(m, &mut reports, &filename));
-
-    handle_reports(&reports, &filename, &src)?;
-    migration.ok_or(Error::MalformedFile)
-}
-
-fn handle_reports(reports: &Reports, filename: &str, src: &str) -> Result<(), Error> {
-    if reports.has_any() {
-        let mut stream = BufWriter::new(stderr().lock());
-        let mut cache = (filename, Source::from(src));
-
-        for report in reports {
-            report.write(&mut cache, &mut stream).with_stderr()?;
-        }
-    }
-
-    if reports.has_fatal() {
-        Err(Error::MalformedFile)
-    } else {
-        Ok(())
-    }
 }

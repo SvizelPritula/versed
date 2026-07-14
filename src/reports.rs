@@ -1,4 +1,9 @@
-use std::{ops::Range, slice};
+use std::{io::BufWriter, ops::Range, slice};
+
+use anstream::stderr;
+use ariadne::Source;
+
+use crate::error::{Error, ResultExt};
 
 type Report<'filename> = ariadne::Report<'static, (&'filename str, Range<usize>)>;
 
@@ -40,5 +45,22 @@ impl<'a, 'filename> IntoIterator for &'a Reports<'filename> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.reports.iter()
+    }
+}
+
+pub fn handle_reports(reports: &Reports, filename: &str, src: &str) -> Result<(), Error> {
+    if reports.has_any() {
+        let mut stream = BufWriter::new(stderr().lock());
+        let mut cache = (filename, Source::from(src));
+
+        for report in reports {
+            report.write(&mut cache, &mut stream).with_stderr()?;
+        }
+    }
+
+    if reports.has_fatal() {
+        Err(Error::MalformedFile)
+    } else {
+        Ok(())
     }
 }

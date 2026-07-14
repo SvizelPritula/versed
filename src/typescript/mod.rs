@@ -13,7 +13,8 @@ use crate::{
     },
     composite,
     error::{Error, ResultExt},
-    load_file, mapper,
+    loading::load_file,
+    mapper,
     preprocessing::{BasicMetadata, ResolutionMetadata},
     typescript::types::emit_types,
 };

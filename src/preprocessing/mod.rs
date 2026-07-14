@@ -1,3 +1,4 @@
+use ariadne::{Color, Label, Report, ReportKind};
 use name_resolution::resolve_names;
 
 mod annotation_check;
@@ -7,7 +8,7 @@ mod recursion_check;
 pub use name_resolution::ResolutionMetadata;
 
 use crate::{
-    ast::TypeSet,
+    ast::{Migration, TypeSet},
     composite,
     preprocessing::{annotation_check::check_annotations, recursion_check::check_recursion},
     reports::Reports,
@@ -24,6 +25,43 @@ pub fn preprocess<'filename>(
     check_recursion(&types, reports, filename);
 
     types
+}
+
+pub fn preprocess_migration<'filename>(
+    migration: Migration<SpanMetadata>,
+    reports: &mut Reports<'filename>,
+    filename: &'filename str,
+) -> Migration<BasicMetadata> {
+    let migration = migration.map(|types| preprocess(types, reports, filename));
+    check_migration_versions(&migration.new, &migration.old, reports, filename);
+
+    migration
+}
+
+pub fn check_migration_versions<'filename>(
+    new: &TypeSet<BasicMetadata>,
+    old: &TypeSet<BasicMetadata>,
+    reports: &mut Reports<'filename>,
+    filename: &'filename str,
+) {
+    if new.version == old.version {
+        let message = "the new schema has the same version as the old schema";
+
+        let report = Report::build(
+            ReportKind::Error,
+            (filename, new.metadata.span.version.into_range()),
+        )
+        .with_config(ariadne::Config::new().with_index_type(ariadne::IndexType::Byte))
+        .with_message(message)
+        .with_label(
+            Label::new((filename, new.metadata.span.version.into_range()))
+                .with_message(message)
+                .with_color(Color::Red),
+        )
+        .finish();
+
+        reports.add_fatal(report);
+    }
 }
 
 composite! {
