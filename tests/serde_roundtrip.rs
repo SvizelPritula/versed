@@ -9,58 +9,6 @@ use crate::utils::{TSC_COMMAND, TSC_OPTIONS};
 
 mod utils;
 
-const SCHEMA: &str = indoc! {"
-    version v1;
-
-    User = struct {
-        first_name: string,
-        last_name: string,
-
-        role: Role,
-        favourite_set: Set,
-    };
-
-    Role = enum {
-        customer,
-        store_employee: struct {
-            supervisor: User,
-        },
-        supervisor: struct {
-            branch: string,
-        },
-        admin,
-    };
-
-    Set = [Set];
-"};
-
-const MOD_CONTENT: &str = indoc! {r#"
-    use v1::{Role, RoleStoreEmployee, RoleSupervisor, Set, User};
-    
-    fn main() {
-        let user = User {
-            first_name: "John".to_string(),
-            last_name: "Watson".to_string(),
-
-            role: Role::StoreEmployee(RoleStoreEmployee {
-                supervisor: Box::new(User {
-                    first_name: "Sherlock".to_string(),
-                    last_name: "Holmes".to_string(),
-
-                    role: Role::Supervisor(RoleSupervisor {
-                        branch: "221B Baker Street".to_string(),
-                    }),
-                    favourite_set: Set(vec![Set(vec![Set(vec![Set(vec![Set(vec![])])])])]),
-                }),
-            }),
-            favourite_set: Set(vec![Set(vec![Set(vec![])]), Set(vec![])]),
-        };
-
-        let content = serde_json::to_string_pretty(&user).unwrap();
-        println!("{}", content);
-    }
-"#};
-
 const MANIFEST_CONTENT: &str = indoc! {r#"
     [package]
     name = "versed_fixture"
@@ -76,8 +24,7 @@ const MANIFEST_CONTENT: &str = indoc! {r#"
     serde_json = "1.0.143"
 "#};
 
-#[test]
-fn roundtrip() {
+fn check(schema: &str, r#type: &str, value: &str) {
     let dir = tempdir().unwrap();
 
     let manifest_path = dir.path().join("Cargo.toml");
@@ -86,11 +33,24 @@ fn roundtrip() {
     let src_path = dir.path().join("src");
     fs::create_dir(&src_path).unwrap();
 
+    let mod_content = format!(
+        indoc! {r#"
+            fn main() {{
+                let user: {type} = {value};
+
+                let content = serde_json::to_string_pretty(&user).unwrap();
+                println!("{{}}", content);
+            }}
+        "#},
+        value = value,
+        r#type = r#type
+    );
+
     let mod_path = src_path.join("mod.rs");
-    fs::write(&mod_path, MOD_CONTENT).unwrap();
+    fs::write(&mod_path, mod_content).unwrap();
 
     let schema_path = dir.path().join("schema.vd");
-    fs::write(&schema_path, SCHEMA).unwrap();
+    fs::write(&schema_path, schema).unwrap();
 
     Command::new(env!("CARGO_BIN_EXE_versed"))
         .arg("rust")
@@ -110,8 +70,10 @@ fn roundtrip() {
     fs::create_dir(&typescript_path).unwrap();
 
     let entrypoint_path = typescript_path.join("main.ts");
-    let entrypoint_content =
-        format!("import {{ v1 }} from \"./index\";\nlet user: v1.User = {json};\n");
+    let entrypoint_content = format!(
+        "import {{ v1 }} from \"./index\";\nlet user: {type} = {json};\n",
+        r#type = r#type.replace("::", ".")
+    );
     fs::write(&entrypoint_path, entrypoint_content).unwrap();
 
     Command::new(env!("CARGO_BIN_EXE_versed"))
@@ -126,3 +88,5 @@ fn roundtrip() {
         .arg(entrypoint_path)
         .run_and_check();
 }
+
+include!("utils/roundtrip_schemas.inc.rs");

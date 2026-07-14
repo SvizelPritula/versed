@@ -11,7 +11,10 @@ use clap::{CommandFactory, Parser, Subcommand, ValueHint};
 use clap_complete::{Generator, Shell};
 
 use crate::{
-    ast::TypeSet, error::{Error, ResultExt}, loading::{load_file, load_migration}, rust::RustOptions,
+    ast::TypeSet,
+    error::{Error, ResultExt},
+    loading::{load_file, load_migration},
+    rust::RustOptions,
 };
 
 pub mod ast;
