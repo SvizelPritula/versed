@@ -176,12 +176,21 @@ enum TypeScriptCommand {
     },
 }
 
+/// Defines the exit codes used by the CLI.
 mod exit_codes {
+    /// A file failed loading for some reason related to its contents.
     pub const MALFORMED_FILE: u8 = 1;
+    /// The CLI arguments were invalid.
+    ///
+    /// Mirrors and documents the exit code used by clap internally.
     pub const _USAGE: u8 = 2; // Used by clap
+    /// A file or directory could not be read or written.
     pub const IO: u8 = 3;
 }
 
+/// Converts a result into an exit code, printing errors if needed.
+///
+/// Doesn't print anything for [`Error::MalformedFile`], as language errors are reported earlier in [`loading`].
 fn handle_result(result: Result<(), Error>) -> ExitCode {
     match result {
         Ok(()) => ExitCode::SUCCESS,
@@ -193,6 +202,7 @@ fn handle_result(result: Result<(), Error>) -> ExitCode {
     }
 }
 
+/// Prints an error to standard error, with a red "Error:" in front.
 fn print_error<E: Display>(error: &E) {
     const STYLE: Style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Red)));
 
@@ -200,11 +210,13 @@ fn print_error<E: Display>(error: &E) {
     let _ = writeln!(stream, "{STYLE}Error:{STYLE:#} {error}");
 }
 
+/// The entrypoint of the compiler.
 fn main() -> ExitCode {
     let args = Args::parse();
     handle_result(run_command(args))
 }
 
+/// Takes the parsed [`Args`] and forwards their contents to the correct handler.
 fn run_command(args: Args) -> Result<(), Error> {
     match args.command {
         Command::Check { file } => {
@@ -260,6 +272,7 @@ fn run_command(args: Args) -> Result<(), Error> {
     Ok(())
 }
 
+/// Implements `versed version`.
 fn print_version(path: &Path) -> Result<(), Error> {
     let TypeSet { version, .. } = load_file(path)?;
     let mut file = stdout().lock();
@@ -271,6 +284,7 @@ fn print_version(path: &Path) -> Result<(), Error> {
     Ok(())
 }
 
+/// Implements `versed completions`.
 fn print_completions(shell: Shell) -> Result<(), Error> {
     let mut command = Args::command();
     command.set_bin_name(command.get_name().to_string());

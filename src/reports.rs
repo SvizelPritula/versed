@@ -7,6 +7,7 @@ use crate::error::{Error, ResultExt};
 
 type Report<'filename> = ariadne::Report<'static, (&'filename str, Range<usize>)>;
 
+/// A set of [`ariadne::Report`]s, which also tracks of any are errors.
 #[derive(Debug, Default)]
 pub struct Reports<'filename> {
     reports: Vec<Report<'filename>>,
@@ -14,15 +15,18 @@ pub struct Reports<'filename> {
 }
 
 impl<'filename> Reports<'filename> {
+    /// Adds a report marked as fatal.
     pub fn add_fatal(&mut self, report: Report<'filename>) {
         self.reports.push(report);
         self.has_fatal = true;
     }
 
+    /// Adds a report *not* marked as fatal.
     pub fn add_nonfatal(&mut self, report: Report<'filename>) {
         self.reports.push(report);
     }
 
+    /// Adds multiple reports, all marked as fatal.
     pub fn extend_fatal<I: IntoIterator<Item = Report<'filename>>>(&mut self, reports: I) {
         self.reports.extend(reports.into_iter().inspect(|_| {
             // A bit of a hack, but I don't see a better way to do this, or why it wouldn't work.
@@ -30,10 +34,12 @@ impl<'filename> Reports<'filename> {
         }));
     }
 
+    /// Gets if a fatal report has been added previously.
     pub fn has_fatal(&self) -> bool {
         self.has_fatal
     }
 
+    /// Gets if any report, fatal or not, has been added previously.
     pub fn has_any(&self) -> bool {
         !self.reports.is_empty()
     }
@@ -48,6 +54,7 @@ impl<'a, 'filename> IntoIterator for &'a Reports<'filename> {
     }
 }
 
+/// Prints all provided reports, and returns an error if any were fatal.
 pub fn handle_reports(reports: &Reports, filename: &str, src: &str) -> Result<(), Error> {
     if reports.has_any() {
         let mut stream = BufWriter::new(stderr().lock());

@@ -1,3 +1,5 @@
+//! Checks for duplicate migration markers.
+
 use std::{
     collections::{HashMap, hash_map::Entry},
     ops::Range,
@@ -12,12 +14,17 @@ use crate::{
     syntax::Span,
 };
 
+/// The context for the annotation check pass.
 struct Context<'types, 'filename, 'reports> {
+    /// The set of used migration markers, with the first type using them.
     used: HashMap<u64, &'types Type<BasicMetadata>>,
+    /// The report collection to add to.
     reports: &'reports mut Reports<'filename>,
+    /// The name of the schema file (for building reports).
     filename: &'filename str,
 }
 
+/// Runs the annotation check pass.
 pub fn check_annotations<'filename>(
     types: &TypeSet<BasicMetadata>,
     reports: &mut Reports<'filename>,
@@ -34,6 +41,7 @@ pub fn check_annotations<'filename>(
     }
 }
 
+/// Visits and checks a type recursively.
 fn check_type<'types>(r#type: &'types Type<BasicMetadata>, context: &mut Context<'types, '_, '_>) {
     if let Some(number) = r#type.number {
         match context.used.entry(number) {
@@ -68,6 +76,7 @@ fn check_type<'types>(r#type: &'types Type<BasicMetadata>, context: &mut Context
     }
 }
 
+/// Creates a report for duplicate migration markers.
 fn make_report(
     error: String,
     primary_label: String,

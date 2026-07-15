@@ -1,5 +1,15 @@
+//! Versed's generic system for attaching metadata to the AST.
+
 use std::fmt::Debug;
 
+/// Defines what values are attached to which node.
+///
+/// This trait is the core of Versed's metadata system.
+/// Every compiler phase that needs to add data to the AST provides an implementation
+/// in the form of a tag type, which gets passed as a generic parameter to all AST types.
+/// Every associated type corresponds to one node from [`crate::ast`] and defines the type attached to it.
+///
+/// See The developer's guide for more information.
 pub trait Metadata: Clone {
     type Type: Debug + Clone;
     type TypeSet: Debug + Clone;
@@ -30,6 +40,7 @@ impl Metadata for () {
     type Variant = ();
 }
 
+/// Groups functions of the type `(A::i, B::i) -> R::i`` where `i` is an associated type of [`Metadata`].
 pub trait MapMetadata<A: Metadata, B: Metadata, R: Metadata> {
     fn map_type(&self, left: A::Type, right: B::Type) -> R::Type;
     fn map_type_set(&self, left: A::TypeSet, right: B::TypeSet) -> R::TypeSet;
@@ -45,6 +56,7 @@ pub trait MapMetadata<A: Metadata, B: Metadata, R: Metadata> {
     fn map_variant(&self, left: A::Variant, right: B::Variant) -> R::Variant;
 }
 
+/// Groups functions of the type `A::i -> R::i`` where `i`` is an associated type of [`Metadata`].
 pub trait GetMetadata<A: Metadata, R: Metadata> {
     fn get_type<'a>(&self, metadata: &'a A::Type) -> &'a R::Type;
     fn get_type_set<'a>(&self, metadata: &'a A::TypeSet) -> &'a R::TypeSet;
@@ -60,6 +72,7 @@ pub trait GetMetadata<A: Metadata, R: Metadata> {
     fn get_variant<'a>(&self, metadata: &'a A::Variant) -> &'a R::Variant;
 }
 
+/// An implementation of [`GetMetadata`] using identity functions.
 #[derive(Debug, Clone, Copy)]
 pub struct GetIdentity;
 
@@ -117,6 +130,7 @@ impl<A: Metadata> GetMetadata<A, A> for GetIdentity {
     }
 }
 
+/// A helper for implementing [`MapMetadata`] where all functions have the same duck-typed body.
 #[macro_export]
 macro_rules! mapper {
     {fn $name: ident($left_var: ident: $left: ty, $right_var: ident: $right: ty) -> $result: ty $body: block} => {
@@ -146,6 +160,7 @@ macro_rules! mapper {
     };
 }
 
+/// A helper for implementing [`GetMetadata`] where all functions have the same duck-typed body.
 #[macro_export]
 macro_rules! getter {
     {fn $name: ident($metadata_var: ident: $metadata: ty) -> $result: ty $body: block} => {
@@ -175,6 +190,7 @@ macro_rules! getter {
     };
 }
 
+/// A helper for composing one or more [`Metadata`] implementations.
 #[macro_export]
 macro_rules! composite {
     {$visibility: vis struct ($element: ident, $metadata: ident) {$($field: ident: $type: ty | $generic: ident),*}} => {

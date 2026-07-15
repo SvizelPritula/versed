@@ -1,3 +1,8 @@
+//! The public interface of the language frontend.
+//!
+//! Handles parsing through [`crate::syntax`] and name resolution and some checks through [`crate::preprocessing`].
+//! Also prints all generated [`ariadne::Report`]s, for lifetime reasons.
+
 use std::{fs, path::Path};
 
 use crate::{
@@ -8,11 +13,12 @@ use crate::{
     syntax::{parse_migration, parse_schema},
 };
 
-/// Loads and parses the file, printing any errors
+/// Loads and parses a schema file, printing any errors.
 pub fn load_file(file: &Path) -> Result<TypeSet<BasicMetadata>, Error> {
     load_file_with_source(file).map(|(types, _)| types)
 }
 
+/// Loads and parses a schema file, printing any errors, returning the source code as well as the AST.
 pub fn load_file_with_source(file: &Path) -> Result<(TypeSet<BasicMetadata>, String), Error> {
     let filename = file.to_string_lossy();
     let src = fs::read_to_string(file).with_path(file)?;
@@ -25,6 +31,7 @@ pub fn load_file_with_source(file: &Path) -> Result<(TypeSet<BasicMetadata>, Str
     ast.ok_or(Error::MalformedFile).map(|ast| (ast, src))
 }
 
+/// Loads and parses a migration file, printing any errors.
 pub fn load_migration(file: &Path) -> Result<Migration<BasicMetadata>, Error> {
     let filename = file.to_string_lossy();
     let src = fs::read_to_string(file).with_path(file)?;

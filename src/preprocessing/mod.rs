@@ -1,3 +1,10 @@
+//! Versed's preprocessing pass.
+//!
+//! It resolves names and checks for
+//! duplicate migration markers (which are errors)
+//! and unbounded recursion (which is a warning).
+//! It also checks whether both versions in a schema file have the same name (which is an error).
+//!
 use ariadne::{Color, Label, Report, ReportKind};
 use name_resolution::resolve_names;
 
@@ -15,6 +22,7 @@ use crate::{
     syntax::SpanMetadata,
 };
 
+/// Runs the preprocessing pass on a schema file, resolving names and running some checks.
 pub fn preprocess<'filename>(
     types: TypeSet<SpanMetadata>,
     reports: &mut Reports<'filename>,
@@ -27,6 +35,7 @@ pub fn preprocess<'filename>(
     types
 }
 
+/// Runs the preprocessing pass on a migration file, resolving names and running some checks.
 pub fn preprocess_migration<'filename>(
     migration: Migration<SpanMetadata>,
     reports: &mut Reports<'filename>,
@@ -38,6 +47,7 @@ pub fn preprocess_migration<'filename>(
     migration
 }
 
+/// Checks whether both versions in a schema file have the same name, producing a report if they do.
 pub fn check_migration_versions<'filename>(
     new: &TypeSet<BasicMetadata>,
     old: &TypeSet<BasicMetadata>,

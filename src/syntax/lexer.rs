@@ -1,3 +1,5 @@
+//! Versed's tokenizer.
+
 use chumsky::{
     IterParser, Parser,
     error::Rich,
@@ -14,22 +16,30 @@ use crate::syntax::{
     tokens::{Group, Keyword, Punct, Token},
 };
 
+/// The error type used in the lexer.
 pub type Error<'src> = Rich<'src, char, Span>;
 
+// The following helpers reimplement some of Chumsky's parsers using icu_properties,
+// so that we get all Unicode properties from one source.
+
+/// A parser that matches any whitespace.
 fn whitespace<'src>() -> impl Parser<'src, &'src str, char, extra::Err<Error<'src>>> + Copy {
     any()
         .filter(|c| WhiteSpace::for_char(*c))
         .labelled_with(|| TextExpected::<char>::Whitespace)
 }
 
+/// A parser that matches characters valid at the start of identifiers.
 fn ident_start<'src>() -> impl Parser<'src, &'src str, char, extra::Err<Error<'src>>> + Copy {
     any().filter(|c| XidStart::for_char(*c) || *c == '_')
 }
 
+/// A parser that matches characters valid in the middle or at the end of identifiers.
 fn ident_continue<'src>() -> impl Parser<'src, &'src str, char, extra::Err<Error<'src>>> + Copy {
     any().filter(|c| XidContinue::for_char(*c))
 }
 
+/// A parser that matches a valid identifier.
 fn ident<'src>() -> impl Parser<'src, &'src str, &'src str, extra::Err<Error<'src>>> + Copy {
     ident_start()
         .then(ident_continue().repeated())
@@ -37,6 +47,7 @@ fn ident<'src>() -> impl Parser<'src, &'src str, &'src str, extra::Err<Error<'sr
         .labelled(TextExpected::<char>::AnyIdentifier)
 }
 
+/// A parser that turns a file into a list of tokens.
 pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<Spanned<Token>>, extra::Err<Error<'src>>> {
     const REPLACEMENT_CHARACTER: char = '\u{FFFD}';
 

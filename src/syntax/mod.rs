@@ -1,3 +1,5 @@
+//! Versed's parser.
+
 use std::{fmt::Display, ops::Range};
 
 use ariadne::{Color, Label, Report, ReportKind};
@@ -17,9 +19,12 @@ pub mod lexer;
 pub mod parser;
 pub mod tokens;
 
+/// The Span type that Versed uses.
 pub type Span = SimpleSpan;
+/// A tuple of a something and its source code span.
 pub type Spanned<T> = (T, Span);
 
+/// Parses a file using a specified token stream parser, converting errors to reports.
 fn parse<'filename, P, O>(
     parser: P,
     src: &str,
@@ -54,6 +59,7 @@ where
     }
 }
 
+/// Parses a schema file.
 pub fn parse_schema<'filename>(
     src: &str,
     reports: &mut Reports<'filename>,
@@ -71,6 +77,7 @@ pub fn parse_schema<'filename>(
     parse(Factory, src, reports, filename)
 }
 
+/// Parses a schema file.
 pub fn parse_migration<'filename>(
     src: &str,
     reports: &mut Reports<'filename>,
@@ -88,9 +95,12 @@ pub fn parse_migration<'filename>(
     parse(Factory, src, reports, filename)
 }
 
-// There is no way to specify that the parser argument of parse has to implement
-// Parser<'t, I, ...> for every I: Input<'t>, necessitating this trait.
+/// A trait for objects that can construct parsers for any concrete token iterator.
+///
+/// There is no way to specify that the parser argument of [`parse`] has to implement
+/// `Parser<'t, I, ...>` for every `I: Input<'t>`, necessitating this trait.
 trait ParserFactory<O> {
+    /// Creates a parser for a given token iterator.
     fn make<'tokens, I: Input<'tokens>>(
         self,
     ) -> impl Parser<'tokens, I, O, extra::Err<Error<'tokens>>>;
@@ -111,6 +121,7 @@ fn make_report<'tokens, T: Display>(
         .finish()
 }
 
+/// A collection of spans tied to a type.
 #[derive(Debug, Clone, Copy)]
 pub struct TypeSpanInfo {
     pub r#type: Span,
@@ -118,21 +129,25 @@ pub struct TypeSpanInfo {
 }
 
 impl TypeSpanInfo {
+    /// Returns the span on the migration marker, or of the type itself if it has no migration marker.
     pub fn number_or_type(&self) -> Span {
         self.number.unwrap_or(self.r#type)
     }
 }
 
+/// A collection of spans tied to a field or variant.
 #[derive(Debug, Clone, Copy)]
 pub struct MemberSpanInfo {
     pub name: Span,
 }
 
+/// A collection of spans tied to a schema file.
 #[derive(Debug, Clone, Copy)]
 pub struct TypeSetSpanInfo {
     pub version: Span,
 }
 
+/// Metadata containing source code spans recorded by the parser.
 #[derive(Debug, Clone, Copy)]
 pub struct SpanMetadata;
 
@@ -151,6 +166,7 @@ impl Metadata for SpanMetadata {
     type Variant = MemberSpanInfo;
 }
 
+/// A collection adapter that implements [`FromIterator`] by flattening.
 #[derive(Debug, Clone)]
 struct FromIterFlatten<Collection>(Collection);
 

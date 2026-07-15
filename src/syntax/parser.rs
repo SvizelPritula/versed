@@ -1,3 +1,5 @@
+//! Versed's token stream parser.
+
 use std::{borrow::Cow, str::FromStr};
 
 use chumsky::{
@@ -22,17 +24,21 @@ use crate::{
     },
 };
 
+/// The error type used in the parser.
 pub type Error<'tokens> = Rich<'tokens, Token, Span>;
 
+/// A helper for compactly referring to a [`Parser`] implementation with a given output.
 macro_rules! Parser {
     [$type: ty] => {
         impl Parser<'tokens, I, $type, extra::Err<Error<'tokens>>> + Clone
     };
 }
 
+/// An alias for [`ValueInput`] with correct generic parameters.
 pub trait Input<'tokens>: ValueInput<'tokens, Token = Token, Span = Span> {}
 impl<'tokens, I: ValueInput<'tokens, Token = Token, Span = Span>> Input<'tokens> for I {}
 
+/// Runs Unicode NFC normalization, avoiding copying if possible.
 fn normalize(ident: String) -> String {
     const NORMALIZER: ComposingNormalizerBorrowed<'static> = ComposingNormalizerBorrowed::new_nfc();
 
@@ -42,6 +48,7 @@ fn normalize(ident: String) -> String {
     }
 }
 
+/// A parser for an identifier, quoted or not.
 fn ident<'tokens, I: Input<'tokens>>() -> Parser![String] {
     select! {
         Token::Ident(ident) => ident,
@@ -51,6 +58,7 @@ fn ident<'tokens, I: Input<'tokens>>() -> Parser![String] {
     .labelled("identifier")
 }
 
+/// A parser for a number token.
 fn number<'tokens, I: Input<'tokens>>() -> Parser![Option<u64>] {
     select! {
         Token::Number(string) => string,
@@ -70,19 +78,24 @@ fn number<'tokens, I: Input<'tokens>>() -> Parser![Option<u64>] {
     .labelled("number")
 }
 
+/// A parser for a specific keyword.
 fn keyword<'tokens, I: Input<'tokens>>(keyword: Keyword) -> Parser![Token] {
     just(Token::Keyword(keyword))
 }
+/// A parser for a specific piece of punctuation.
 fn punct<'tokens, I: Input<'tokens>>(punct: Punct) -> Parser![Token] {
     just(Token::Punct(punct))
 }
+/// A parser for a specific type of opening paren.
 fn left<'tokens, I: Input<'tokens>>(group: Group) -> Parser![Token] {
     just(Token::GroupLeft(group))
 }
+/// A parser for a specific type of closing paren.
 fn right<'tokens, I: Input<'tokens>>(group: Group) -> Parser![Token] {
     just(Token::GroupRight(group))
 }
 
+/// A parser that parses migration markers.
 fn type_number<'tokens, I: Input<'tokens>>() -> Parser![Option<(u64, Span)>] {
     punct(Punct::Pound)
         .ignore_then(number().recover_with(via_parser(empty().to(None))))
@@ -91,7 +104,7 @@ fn type_number<'tokens, I: Input<'tokens>>() -> Parser![Option<(u64, Span)>] {
         .map_with(|n, e| n.map(|n| (n, e.span())))
 }
 
-/// Matches any token or a bracketed expression (without semicolons),
+/// A parser (for error recovery) that matches any token or a bracketed expression (without semicolons),
 /// but doesn't allow for semicolons, as those cannot appear within types
 /// and are used to synchronize broken named types.
 fn single_or_group<'tokens, I: Input<'tokens>>() -> Parser![()] {
@@ -119,6 +132,7 @@ fn single_or_group<'tokens, I: Input<'tokens>>() -> Parser![()] {
     })
 }
 
+/// A parser that parses a configurable composite type (an enum or a struct).
 fn composite<'tokens, I: Input<'tokens>, F, T>(
     leading_keyword: Keyword,
     map_field: impl Fn(String, Type<SpanMetadata>, Span) -> F + Clone,
@@ -179,11 +193,13 @@ fn composite<'tokens, I: Input<'tokens>, F, T>(
     keyword(leading_keyword).ignore_then(body).map(map_type)
 }
 
+/// The unit type, to replace unparsable types during error recover.
 const UNIT: Primitive<SpanMetadata> = Primitive {
     r#type: PrimitiveType::Unit,
     metadata: (),
 };
 
+/// A parser that parses one full schema, with trailing data allowed.
 fn schema_parser<'tokens, I: Input<'tokens>>(
     stop_at_version: bool,
 ) -> Parser![TypeSet<SpanMetadata>] {
@@ -350,10 +366,12 @@ fn schema_parser<'tokens, I: Input<'tokens>>(
         })
 }
 
+/// A parser that parses a schema file.
 pub fn schema_file_parser<'tokens, I: Input<'tokens>>() -> Parser![TypeSet<SpanMetadata>] {
     schema_parser(false).then_ignore(end())
 }
 
+/// A parser that parses a migration file.
 pub fn migration_file_parser<'tokens, I: Input<'tokens>>() -> Parser![Migration<SpanMetadata>] {
     schema_parser(true)
         .then(schema_parser(true))

@@ -1,5 +1,8 @@
+//! Declares all token types.
+
 use std::fmt::{self, Display, Formatter, Write};
 
+/// A token.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Token {
     Ident(String),
@@ -13,6 +16,7 @@ pub enum Token {
     Keyword(Keyword),
 }
 
+/// A type of parenthesis.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Group {
     Paren,
@@ -20,6 +24,7 @@ pub enum Group {
     Brace,
 }
 
+/// A specific punctuation character.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Punct {
     Equals,
@@ -29,6 +34,7 @@ pub enum Punct {
     Pound,
 }
 
+/// A specific keyword.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Keyword {
     Version,

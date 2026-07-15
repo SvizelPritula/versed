@@ -1,3 +1,7 @@
+//! Attaches indices into [`TypeSet::types`] to identifiers.
+//!
+//! It also checks if any name is defined more than once.
+
 use std::{
     collections::{HashMap, hash_map::Entry},
     ops::Range,
@@ -16,24 +20,32 @@ use crate::{
     syntax::{Span, SpanMetadata},
 };
 
-// Placeholder, will panic if used, which it should never be,
-// as it can't escape outside of preprocessing.
-// It does need to be checked inside preprocessing.
+/// Placeholder, will panic if used, which it should never be,
+/// as it can't escape outside of preprocessing.
+/// It does need to be checked inside preprocessing.
 pub const INVALID_INDEX: usize = usize::MAX;
 
+/// Info about the name of a type.
 #[derive(Debug)]
 struct NameInfo {
+    /// An index into [`TypeSet::types`].
     index: usize,
+    /// The span where the name is defined.
     span: Span,
 }
 
+/// The context for the name resolution pass.
 #[derive(Debug)]
 struct ResolutionContext<'a, 'filename> {
+    /// Information about each named type.
     names: HashMap<String, NameInfo>,
-    filename: &'filename str,
+    /// The report collection to add to.
     reports: &'a mut Reports<'filename>,
+    /// The name of the schema file (for building reports).
+    filename: &'filename str,
 }
 
+/// Runs the name resolution pass.
 pub fn resolve_names<'filename>(
     TypeSet {
         version,
@@ -100,6 +112,7 @@ pub fn resolve_names<'filename>(
     }
 }
 
+/// Visits and resolves a type recursively.
 fn resolve_type(
     r#type: Type<SpanMetadata>,
     context: &mut ResolutionContext,
@@ -236,6 +249,7 @@ fn resolve_type(
     }
 }
 
+/// Checks if all values, meant to be field or variant names, are unique.
 fn check_unique<'a, 'filename>(
     iter: impl Iterator<Item = (&'a str, Span)>,
     type_name: &'a str,
@@ -261,6 +275,7 @@ fn check_unique<'a, 'filename>(
     }
 }
 
+/// Metadata containing indices into [`TypeSet::types`] for every identifier.
 #[derive(Debug, Clone, Copy)]
 pub struct ResolutionMetadata;
 
@@ -279,6 +294,7 @@ impl Metadata for ResolutionMetadata {
     type Variant = ();
 }
 
+/// A helper that creates a [`Report`] with one error.
 fn make_simple_report(
     error: String,
     span: Span,
@@ -295,6 +311,7 @@ fn make_simple_report(
         .finish()
 }
 
+/// A helper that creates a [`Report`] with two annotated spans.
 fn make_double_label_report(
     error: String,
     primary_label: String,

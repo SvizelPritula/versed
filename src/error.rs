@@ -1,3 +1,5 @@
+//! Contains Versed's [`enum@Error`] type and some helpers.
+
 use std::{
     io,
     path::{Path, PathBuf},
@@ -5,6 +7,7 @@ use std::{
 
 use thiserror::Error;
 
+/// An error that occurred during the execution of the CLI.
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("Failed to access {path}: {error}")]
@@ -17,11 +20,15 @@ pub enum Error {
     MalformedFile,
 }
 
+/// Provides some extension methods on [`Result<T, E>`] where `E` = [`io::Error`].
 pub trait ResultExt {
     type Result;
 
+    /// Turns the error into [`Error::Io`] with the specified path.
     fn with_path<P: AsRef<Path>>(self, path: P) -> Self::Result;
+    /// Turns the error into [`Error::Io`] with the path set to "standard output".
     fn with_stdout(self) -> Self::Result;
+    /// Turns the error into [`Error::Io`] with the path set to "standard error".
     fn with_stderr(self) -> Self::Result;
 }
 

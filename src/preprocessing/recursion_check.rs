@@ -1,3 +1,10 @@
+//! Checks for and warns on unbounded recursion.
+//!
+//! Unbounded recursion means that a type will inevitably contain itself.
+//! This means there is a dependency cycle that does not involve a list or an enum,
+//! not counting enums where all variants contain the original type.
+//! It will also not trigger for uninhabited types.
+
 use std::{collections::HashMap, ops::Range};
 
 use ariadne::{Color, Config, IndexType, Label, Report, ReportKind};
@@ -9,18 +16,22 @@ use crate::{
     syntax::Span,
 };
 
+/// The context for the recursion check pass, valid for one iteration.
 struct RecursionContext<'types> {
     types: &'types TypeSet<BasicMetadata>,
     cache: HashMap<usize, CheckResult>,
 }
 
+/// The result of checking a type .
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum CheckResult {
+    // In order or increasing priority:
     None,
     ContainsNever,
     InfiniteDepth,
 }
 
+/// Runs the recursion check pass.
 pub fn check_recursion<'filename>(
     types: &TypeSet<BasicMetadata>,
     reports: &mut Reports<'filename>,
@@ -45,6 +56,7 @@ pub fn check_recursion<'filename>(
     }
 }
 
+/// Runs the check for one top-level type.
 fn check_named(index: usize, context: &mut RecursionContext) -> CheckResult {
     if let Some(result) = context.cache.get(&index) {
         return *result;
@@ -60,6 +72,7 @@ fn check_named(index: usize, context: &mut RecursionContext) -> CheckResult {
     result
 }
 
+/// Visits and checks a type recursively.
 fn check_type(r#type: &Type<BasicMetadata>, context: &mut RecursionContext) -> CheckResult {
     match &r#type.r#type {
         TypeType::Struct(r#struct) => r#struct
@@ -80,6 +93,7 @@ fn check_type(r#type: &Type<BasicMetadata>, context: &mut RecursionContext) -> C
     }
 }
 
+/// Creates a report.
 fn make_report(
     message: String,
     span: Span,
