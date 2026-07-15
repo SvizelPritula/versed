@@ -10,7 +10,7 @@ categories = ["command-line-utilities", "development-tools", "encoding"]
 repository = "https://github.com/SvizelPritula/versed"
 documentation = "https://github.com/SvizelPritula/versed/tree/main/docs"
 
-exclude = ["/.github/"]
+exclude = ["/.github/", "/versed.sublime-syntax"]
 
 [dependencies]
 anstream = "1.0.0"
