@@ -35,6 +35,7 @@ fn check(schema: &str, r#type: &str, value: &str) {
 
     let mod_content = format!(
         indoc! {r#"
+            #![recursion_limit = "256"]
             fn main() {{
                 let user: {type} = {value};
 

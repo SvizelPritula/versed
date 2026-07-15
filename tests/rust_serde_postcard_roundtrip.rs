@@ -34,6 +34,7 @@ fn check(schema: &str, r#type: &str, value: &str) {
     let mod_path = src_path.join("mod.rs");
     let content = format!(
         indoc! {r#"
+            #![recursion_limit = "256"]
             #[allow(unused_imports)]
             fn main() {{
                 let before: {type} = {value};
