@@ -1,0 +1,88 @@
+%YAML 1.2
+---
+name: Versed
+file_extensions: [vs, versed]
+scope: source.versed
+
+contexts:
+  main:
+    - include: comments
+    - include: migration-markers
+
+    - match: '(?<=version)\p{White_Space}*(\p{XID_Start}\p{XID_Continue}*)'
+      captures:
+        1: entity.name.namespace.versed
+
+    - match: '(\p{XID_Start}\p{XID_Continue}*)\p{White_Space}*(=)'
+      captures:
+        1: entity.name.type.versed
+        2: keyword.operator.assignment.versed
+
+    - match: ";"
+      scope: punctuation.terminator.versed
+  
+    - match: "version|struct|enum|unit|string|int"
+      scope: keyword.other.versed
+
+    - match: '\p{XID_Start}\p{XID_Continue}*'
+      scope: storage.type.versed
+
+    - match: ","
+      scope: punctuation.separator.comma.versed
+    - match: ";"
+      scope: punctuation.terminator.versed
+    - match: ":"
+      scope: punctuation.separator.versed
+
+    - match: '\('
+      scope: punctuation.section.parens.begin.versed
+    - match: '\)'
+      scope: punctuation.section.parens.end.versed
+    - match: '\['
+      scope: punctuation.section.brackets.begin.versed
+    - match: '\]'
+      scope: punctuation.section.brackets.end.versed
+    - match: '\{'
+      scope: punctuation.section.braces.begin.versed
+      push: fields
+    - match: '\}'
+      scope: punctuation.section.braces.end.versed
+
+  fields:
+    - include: comments
+    - include: migration-markers
+
+    - match: '\p{XID_Start}\p{XID_Continue}*'
+      scope: variable.other.member.versed
+
+    - match: '\}'
+      scope: punctuation.section.braces.end.versed
+      pop: true
+
+    - match: ":"
+      scope: punctuation.separator.versed
+      push: field
+
+  field:
+    - include: comments
+
+    - match: ","
+      scope: punctuation.separator.comma.versed
+      pop: true
+
+    - match: "(?=\\})"
+      pop: true
+
+    - include: main
+
+  migration-markers:
+    - match: "#"
+      scope: keyword.operator.versed
+    - match: "[0-9]+"
+      scope: constant.numeric.integer.decimal.versed
+
+  comments:
+    - match: "(//).*$"
+      scope: comment.line.versed
+      captures:
+        1: punctuation.definition.comment.versed
