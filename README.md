@@ -195,7 +195,7 @@ Address = #11 struct {
 ```
 
 You can then use `versed migration finish schema.vs schema.vsm` to end the interactive migration,
-which removes the markers and creates a migration file.
+which removes the markers and creates a _migration file_.
 Afterwards, you can run `versed rust migration schema.vsm src/schema/`
 to scaffold the migration functions.
 This will give you a file that contains most of the boilerplate,
