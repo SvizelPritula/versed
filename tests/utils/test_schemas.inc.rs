@@ -1,6 +1,9 @@
 #[test]
 fn readme() {
-    const CONTENTS: &str = include_str!("../../README.md");
+    const CONTENTS: &str = concat!(
+        include_str!("../../README.md"),
+        include_str!("../../docs/language.md")
+    );
 
     let mut in_code_block = false;
     let mut body = String::new();
