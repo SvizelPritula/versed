@@ -248,7 +248,7 @@ This is needed since backends need to perform IO in radically different ways —
 `versed migration finish` edits one and deletes one schema file and writes a migration file,
 and so on.
 There is no uniform interface for calling backends for the same reason.
-It could be useful to implement sans-io versions of all commands in the future,
+It could be useful to implement sans-IO versions of all commands in the future,
 but the API design would not be exactly trivial and there is no present need.
 
 ## The tests

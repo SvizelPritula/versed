@@ -126,3 +126,9 @@ Category = struct {
 
 `versed` will sometimes have to insert `Box`es
 into the generated Rust type declarations to make that work.
+
+## Migration files
+
+Migration files are simply the concatenation of two schema files.
+They usually contain multiple migration markers.
+Migration markers are also valid in schema files, where they are ignored.
