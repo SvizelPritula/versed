@@ -1,3 +1,5 @@
+//! Rust's rules for identifiers.
+
 use icu_properties::props::{BinaryProperty, XidContinue, XidStart};
 
 use crate::codegen::{
@@ -5,6 +7,7 @@ use crate::codegen::{
     naming_pass::{NamingRule, NamingRules},
 };
 
+/// The [`IdentRules`] for most Rust identifiers.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct RustIdentRules;
 
@@ -40,6 +43,9 @@ impl IdentRules for RustIdentRules {
     }
 }
 
+/// The [`IdentRules`] for Rust identifiers of modules.
+///
+/// Rust module names must be ASCII only, otherwise the `path` attribute must be used.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct RustModIdentRules;
 
@@ -65,6 +71,7 @@ impl IdentRules for RustModIdentRules {
     }
 }
 
+/// The [`NamingRules`] for Rust.
 pub struct RustNamingRules;
 
 impl NamingRules for RustNamingRules {
@@ -82,6 +89,7 @@ impl NamingRules for RustNamingRules {
     }
 }
 
+/// The [`NamingRules`] for the versions of type names that go on the end of migration function names.
 pub struct RustMigrationSuffixNamingRules;
 
 impl NamingRules for RustMigrationSuffixNamingRules {

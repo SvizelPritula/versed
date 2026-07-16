@@ -1,3 +1,5 @@
+//! TypeScript's rules for identifiers.
+
 use icu_properties::props::{BinaryProperty, IdContinue, IdStart};
 
 use crate::codegen::{
@@ -5,14 +7,16 @@ use crate::codegen::{
     naming_pass::{NamingRule, NamingRules},
 };
 
+/// Checks if a character may occur at the start of an identifier.
 fn is_start_char(ch: char) -> bool {
     IdStart::for_char(ch) || ch == '_' || ch == '$'
 }
-
+/// Checks if a character may occur in the middle or at the end of an identifier.
 fn is_continue_char(ch: char) -> bool {
     IdContinue::for_char(ch) || ch == '_' || ch == '$'
 }
 
+/// The [`IdentRules`] for TypeScript type names.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct TypeScriptTypeIdentRules;
 
@@ -48,6 +52,7 @@ impl IdentRules for TypeScriptTypeIdentRules {
     }
 }
 
+/// The [`IdentRules`] for imported names in TypeScript.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct TypeScriptImportIdentRules;
 
@@ -82,6 +87,7 @@ impl IdentRules for TypeScriptImportIdentRules {
     }
 }
 
+/// The [`IdentRules`] for TypeScript fields.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct TypeScriptMemberIdentRules;
 
@@ -107,6 +113,7 @@ impl IdentRules for TypeScriptMemberIdentRules {
     }
 }
 
+/// The [`NamingRules`] for TypeScript.
 pub struct TypeScriptNamingRules;
 
 impl NamingRules for TypeScriptNamingRules {

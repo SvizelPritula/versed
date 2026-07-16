@@ -1,3 +1,5 @@
+//! The backend for Rust type declarations.
+
 use std::io::{Result, Write};
 
 use crate::{
@@ -10,12 +12,14 @@ use crate::{
     },
 };
 
+/// The context for the Rust type declaration backend.
 #[derive(Debug, Clone, Copy)]
 struct TypeCodegenContext<'a> {
     pub naming: NamingContext<'a, RustMetadata>,
     pub options: &'a RustOptions,
 }
 
+/// Emits all type declarations.
 pub fn emit_types(
     writer: &mut SourceWriter<impl Write>,
     types: &TypeSet<RustMetadata>,
@@ -45,6 +49,7 @@ pub fn emit_types(
     Ok(())
 }
 
+/// Visits a type and emits its type declaration recursively.
 fn emit_type_recursive(
     writer: &mut SourceWriter<impl Write>,
     context: TypeCodegenContext,
@@ -73,6 +78,7 @@ fn emit_type_recursive(
     Ok(())
 }
 
+/// Emits the type declaration for a struct.
 fn emit_struct(
     writer: &mut SourceWriter<impl Write>,
     context: TypeCodegenContext,
@@ -106,6 +112,7 @@ fn emit_struct(
     Ok(())
 }
 
+/// Emits the type declaration for an enum.
 fn emit_enum(
     writer: &mut SourceWriter<impl Write>,
     context: TypeCodegenContext,
@@ -142,6 +149,7 @@ fn emit_enum(
     Ok(())
 }
 
+/// Emits a type alias.
 fn emit_type_alias(
     writer: &mut SourceWriter<impl Write>,
     context: TypeCodegenContext,
@@ -171,6 +179,7 @@ fn emit_type_alias(
     Ok(())
 }
 
+/// Writes the name of the Rust type corresponding to a Versed type.
 fn write_type_name(
     writer: &mut SourceWriter<impl Write>,
     context: TypeCodegenContext,
@@ -186,6 +195,7 @@ fn write_type_name(
     )
 }
 
+/// Writes a [`derive`] macro.
 fn write_derive(writer: &mut SourceWriter<impl Write>, context: TypeCodegenContext) -> Result<()> {
     writer.write("#[derive(")?;
 
@@ -202,6 +212,9 @@ fn write_derive(writer: &mut SourceWriter<impl Write>, context: TypeCodegenConte
     Ok(())
 }
 
+/// Checks if a top-level type needs to get a type alias.
+///
+/// Will return `true` of `type` is not a struct or enum.
 fn needs_type_alias(r#type: &Type<RustMetadata>) -> bool {
     !matches!(r#type.r#type, TypeType::Struct(_) | TypeType::Enum(_))
 }

@@ -1,3 +1,5 @@
+//! Helpers shared by the type declaration and migration backends.
+
 use std::{
     collections::HashSet,
     fmt,
@@ -11,6 +13,7 @@ use crate::{
     rust::RustMetadata,
 };
 
+/// The information needed by [`write_type_name`].
 #[derive(Debug, Clone, Copy)]
 pub struct NamingContext<'a, M: Metadata> {
     pub types: &'a TypeSet<M>,
@@ -18,6 +21,7 @@ pub struct NamingContext<'a, M: Metadata> {
 }
 
 impl<M: Metadata> NamingContext<'_, M> {
+    /// Returns `name`, unless a user-defined type conflicts with it, then it returns `fallback`.
     pub fn rust_type<'b>(&self, name: &'b str, fallback: &'b str) -> &'b str {
         if self.used_type_names.contains(name) {
             fallback
@@ -27,6 +31,7 @@ impl<M: Metadata> NamingContext<'_, M> {
     }
 }
 
+/// Writes the name of the Rust type corresponding to a Versed type.
 pub fn write_type_name<M, GM, W>(
     writer: &mut SourceWriter<W>,
     context: NamingContext<M>,
@@ -93,6 +98,7 @@ where
     Ok(())
 }
 
+/// Computes the set of all Rust type names used by a schema.
 pub fn all_rust_type_names<M: Metadata>(
     types: &TypeSet<M>,
     get_metadata: impl GetMetadata<M, RustMetadata> + Copy,
@@ -107,6 +113,7 @@ pub fn all_rust_type_names<M: Metadata>(
     set
 }
 
+/// Visits a type and adds its name to `set` recursively.
 fn add_all_rust_type_names_for_type<'a, M: Metadata>(
     r#type: &'a Type<M>,
     set: &mut HashSet<&'a str>,

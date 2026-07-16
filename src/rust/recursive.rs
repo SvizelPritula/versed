@@ -1,3 +1,5 @@
+//! The passes that detect locations where [`Box`]es and newtypes need to be added.
+
 use std::collections::{HashSet, VecDeque};
 
 use crate::{
@@ -6,6 +8,7 @@ use crate::{
     rust::RustMetadata,
 };
 
+/// The context for one iteration of the [`Box`]-insertion pass.
 struct BoxContext {
     queue: VecDeque<usize>,
     visited: HashSet<usize>,
@@ -13,6 +16,7 @@ struct BoxContext {
 }
 
 impl BoxContext {
+    /// Queues a new type to be visited.
     fn enqueue(&mut self, idx: usize) {
         if self.visited.insert(idx) {
             self.queue.push_front(idx);
@@ -20,6 +24,7 @@ impl BoxContext {
     }
 }
 
+/// Runs the [`Box`]-insertion pass.
 pub fn mark_boxes(types: &mut TypeSet<RustMetadata>) {
     for source in 0..types.types.len() {
         let mut context = BoxContext {
@@ -39,6 +44,9 @@ pub fn mark_boxes(types: &mut TypeSet<RustMetadata>) {
     }
 }
 
+/// Visits a type and checks if it needs to be boxed.
+///
+/// Returns `true` if it needs to be boxed.
 fn process_type(r#type: &mut Type<RustMetadata>, context: &mut BoxContext) -> bool {
     match &mut r#type.r#type {
         TypeType::Struct(r#struct) => {
@@ -76,12 +84,14 @@ fn process_type(r#type: &mut Type<RustMetadata>, context: &mut BoxContext) -> bo
     }
 }
 
+/// The context for one iteration of the newtype-insertion pass.
 struct NewtypeContext<'a> {
     types: &'a TypeSet<RustMetadata>,
     visited: HashSet<usize>,
     source: usize,
 }
 
+/// Runs the newtype-insertion pass.
 pub fn mark_newtypes(types: &mut TypeSet<RustMetadata>) {
     for source in 0..types.types.len() {
         let mut context = NewtypeContext {
@@ -96,6 +106,7 @@ pub fn mark_newtypes(types: &mut TypeSet<RustMetadata>) {
     }
 }
 
+/// Checks if the type contains a reference to [`NewtypeContext::source`] not through structs or enums.
 fn has_type_reference_through_alias(
     r#type: &Type<RustMetadata>,
     context: &mut NewtypeContext,
@@ -123,6 +134,7 @@ fn has_type_reference_through_alias(
     }
 }
 
+/// Metadata that marks types than need to be boxed.
 #[derive(Debug, Clone, Copy)]
 pub struct BoxMetadata;
 
@@ -141,6 +153,7 @@ impl Metadata for BoxMetadata {
     type Variant = ();
 }
 
+/// Metadata that marks types than need to become newtypes.
 #[derive(Debug, Clone, Copy)]
 pub struct NewtypeMetadata;
 

@@ -1,3 +1,5 @@
+//! The TypeScript language backend.
+
 use std::{
     fs::{File, create_dir_all},
     io::{BufWriter, Write},
@@ -24,10 +26,12 @@ mod types;
 
 pub use idents::TypeScriptNamingRules;
 
+/// Runs TypeScript-specific passes to convert [`BasicMetadata`] into [`TypeScriptMetadata`].
 fn convert_types(types: TypeSet<BasicMetadata>) -> TypeSet<TypeScriptMetadata> {
     name(types, TypeScriptNamingRules, AddName)
 }
 
+/// Implements `versed typescript types`.
 pub fn generate_types(path: &Path, output: &Path, to_file: bool) -> Result<(), Error> {
     let types = load_file(path)?;
     let types = convert_types(types);
@@ -39,6 +43,7 @@ pub fn generate_types(path: &Path, output: &Path, to_file: bool) -> Result<(), E
     }
 }
 
+/// Saves type declarations into a specific directory and adds a re-export to `index.ts`.
 fn write_to_directory(types: &TypeSet<TypeScriptMetadata>, path: &Path) -> Result<(), Error> {
     create_dir_all(path).with_path(path)?;
     let mod_name = &types.metadata.name;
@@ -52,6 +57,7 @@ fn write_to_directory(types: &TypeSet<TypeScriptMetadata>, path: &Path) -> Resul
     Ok(())
 }
 
+/// Saves type declarations to a specific file.
 fn write_to_file(
     types: &TypeSet<TypeScriptMetadata>,
     path: &Path,
@@ -70,6 +76,7 @@ fn write_to_file(
     Ok(())
 }
 
+/// Appends a re-export to a file.
 fn add_reexport_to_file(module_name: &str, path: &Path) -> Result<(), Error> {
     add_line_to_file(
         path,

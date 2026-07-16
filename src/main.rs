@@ -1,3 +1,5 @@
+//! Versed is a tool for generating DTOs and their migrations from schema descriptions.
+
 use std::{
     fmt::Display,
     io::{BufWriter, Write, stdout},

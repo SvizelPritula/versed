@@ -1,3 +1,5 @@
+//! The backend for Rust migrations.
+
 use std::{
     collections::{HashMap, HashSet},
     fmt::{self, Arguments, Display},
@@ -21,6 +23,7 @@ use crate::{
     },
 };
 
+/// The context for the Rust migration backend.
 #[derive(Debug, Clone, Copy)]
 pub struct Context<'a> {
     old: NamingContext<'a, RustMigrationMetadata>,
@@ -30,6 +33,7 @@ pub struct Context<'a> {
 }
 
 impl<'a> Context<'a> {
+    /// Gets the migration function between `old` and `new`, if it exists.
     fn function_between(
         &'a self,
         old: &'a Type<RustMigrationMetadata>,
@@ -42,10 +46,12 @@ impl<'a> Context<'a> {
         }
     }
 
+    /// Gets the name of the migration function to `new`, assuming it exists.
     fn function_to(&'a self, new: &'a Type<RustMigrationMetadata>) -> impl Display {
         function_to(self.direction, new)
     }
 
+    /// Gets a free name for a local variable.
     fn free_name<'b>(&'a self, base: &'b str) -> String {
         let mut result = base.to_string();
         disambiguate(&mut result, |name| self.function_names.contains(name));
@@ -53,6 +59,7 @@ impl<'a> Context<'a> {
     }
 }
 
+/// Gets the name of the migration function to `new`, assuming it exists.
 fn function_to<'a>(direction: &'a str, new: &'a Type<RustMigrationMetadata>) -> impl Display {
     let name = &new.metadata.migration_name;
     let name = name
@@ -61,6 +68,9 @@ fn function_to<'a>(direction: &'a str, new: &'a Type<RustMigrationMetadata>) -> 
     FunctionName(direction, name)
 }
 
+/// The name of a migration function.
+///
+/// Has a useful [`Display`] implementation.
 struct FunctionName<'a>(&'a str, &'a str);
 
 impl Display for FunctionName<'_> {
@@ -70,17 +80,20 @@ impl Display for FunctionName<'_> {
     }
 }
 
+/// The tuple of an AST node for some specific type, and the parent [`Type`] node.
 struct WithMetadata<'a, T> {
     r#type: &'a T,
     full: &'a Type<RustMigrationMetadata>,
 }
 
+/// Two versions of types with the same [`TypeType`].
 struct GenericPair<'a, T> {
     old: WithMetadata<'a, T>,
     new: WithMetadata<'a, T>,
 }
 
 impl<'a, T> GenericPair<'a, T> {
+    /// Creates a new [`GenericPair`].
     fn new(
         old: &'a T,
         new: &'a T,
@@ -100,8 +113,10 @@ impl<'a, T> GenericPair<'a, T> {
     }
 }
 
+/// An invocation of the [`todo!`] macro.
 const TODO: &str = "todo!()";
 
+/// Emits all migration functions.
 pub fn emit_migrations(
     writer: &mut SourceWriter<impl Write>,
     migration: &Migration<RustMigrationMetadata>,
@@ -125,6 +140,7 @@ pub fn emit_migrations(
     Ok(())
 }
 
+/// Emits all migration functions in a given direction.
 fn emit_directional_migration(
     writer: &mut SourceWriter<impl Write>,
     old: &TypeSet<RustMigrationMetadata>,
@@ -171,6 +187,7 @@ fn emit_directional_migration(
     Ok(())
 }
 
+/// Emits one migration function.
 fn emit_function(
     writer: &mut SourceWriter<impl Write>,
     context: Context,
@@ -196,6 +213,7 @@ fn emit_function(
     Ok(())
 }
 
+/// Emits the body (without any boxing or newtype wrapping) of one migration function.
 fn emit_body(
     writer: &mut SourceWriter<impl Write>,
     context: Context,
@@ -272,6 +290,7 @@ fn emit_body(
     Ok(())
 }
 
+/// Emits the body of a migration function for a struct.
 fn emit_struct(
     writer: &mut SourceWriter<impl Write>,
     context: Context,
@@ -314,6 +333,7 @@ fn emit_struct(
     Ok(())
 }
 
+/// Emits the body of a migration function for an enum.
 fn emit_enum(
     writer: &mut SourceWriter<impl Write>,
     context: Context,
@@ -364,6 +384,7 @@ fn emit_enum(
     Ok(())
 }
 
+/// Emits the body of a migration function for a list.
 fn emit_list(
     writer: &mut SourceWriter<impl Write>,
     context: Context,
@@ -377,6 +398,7 @@ fn emit_list(
     }
 }
 
+/// Emits the body of a migration function for a primitive.
 fn emit_primitive(
     writer: &mut SourceWriter<impl Write>,
     _context: Context,
@@ -390,6 +412,7 @@ fn emit_primitive(
     }
 }
 
+/// Emits the body of a migration function for an identifier.
 fn emit_identifier(
     writer: &mut SourceWriter<impl Write>,
     context: Context,
@@ -406,6 +429,7 @@ fn emit_identifier(
     }
 }
 
+/// Writes a call to a migration function.
 fn write_upgrade(
     writer: &mut SourceWriter<impl Write>,
     context: Context,
@@ -421,10 +445,12 @@ fn write_upgrade(
     Ok(())
 }
 
+/// Writes an invocation of the [`todo!`] macro.
 fn write_todo(writer: &mut SourceWriter<impl Write>) -> Result<()> {
     writer.write_nl(TODO)
 }
 
+/// Writes the name of the Rust type corresponding to a Versed type.
 fn write_type_name(
     writer: &mut SourceWriter<impl Write>,
     context: codegen::NamingContext<RustMigrationMetadata>,

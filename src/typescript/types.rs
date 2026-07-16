@@ -1,3 +1,5 @@
+//! The backend for TypeScript type declarations.
+
 use std::{
     collections::HashSet,
     io::{Result, Write},
@@ -9,6 +11,7 @@ use crate::{
     typescript::TypeScriptMetadata,
 };
 
+/// Emits all type declarations.
 pub fn emit_types(
     writer: &mut SourceWriter<impl Write>,
     types: &TypeSet<TypeScriptMetadata>,
@@ -35,6 +38,7 @@ pub fn emit_types(
     Ok(())
 }
 
+/// Visits a type and emits its type declaration.
 fn emit_type(
     writer: &mut SourceWriter<impl Write>,
     types: &TypeSet<TypeScriptMetadata>,
@@ -108,6 +112,11 @@ fn emit_type(
     Ok(())
 }
 
+/// Checks if a type is an alias of itself.
+///
+/// That is, whether it's a declaration of the form `A = A;`, or `A = B; B = A;`, etc.
+/// Translating it directly to TypeScript results in an error, so it gets turned into `A = never`,
+/// as it cannot get constructed anyway.
 fn is_anomalously_recursive(r#types: &TypeSet<TypeScriptMetadata>, mut index: usize) -> bool {
     let mut visited = HashSet::new();
 

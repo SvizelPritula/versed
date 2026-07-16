@@ -137,6 +137,7 @@ macro_rules! mapper {
         #[derive(Debug, Clone, Copy)]
         struct $name;
 
+        #[doc(hidden)]
         macro_rules! mapper_func {
             ($func: ident, $subtype: ident, $metadata: ty) => {
                 fn $func(&self, $left_var: <$left as $metadata>::$subtype, $right_var: <$right as $metadata>::$subtype) -> <$result as $metadata>::$subtype $body
@@ -167,6 +168,7 @@ macro_rules! getter {
         #[derive(Debug, Clone, Copy)]
         struct $name;
 
+        #[doc(hidden)]
         macro_rules! getter_func {
             ($func: ident, $subtype: ident, $meta_trait: ty) => {
                 fn $func<'a>(&self, $metadata_var: &'a <$metadata as $meta_trait>::$subtype) -> &'a <$result as $meta_trait>::$subtype $body

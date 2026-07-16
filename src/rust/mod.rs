@@ -1,3 +1,5 @@
+//! The Rust language backend.
+
 use std::{
     borrow::Cow,
     fs::{File, create_dir_all, exists},
@@ -34,6 +36,7 @@ mod migrations;
 mod recursive;
 mod types;
 
+/// Configuration of the Rust type declaration backend.
 #[derive(Debug, Clone)]
 pub struct RustOptions {
     serde: bool,
@@ -42,6 +45,7 @@ pub struct RustOptions {
 }
 
 impl RustOptions {
+    /// Creates new [`RustOptions`].
     pub fn new(serde: bool, extra_derives: Vec<String>, serde_external_tag: bool) -> Self {
         let mut derives = vec![Cow::Borrowed("Debug"), Cow::Borrowed("Clone")];
 
@@ -68,6 +72,7 @@ impl Default for RustOptions {
     }
 }
 
+/// Runs Rust-specific passes to convert [`BasicMetadata`] into [`RustMetadata`].
 fn convert_types(types: TypeSet<BasicMetadata>) -> TypeSet<RustMetadata> {
     let types = name(types, RustNamingRules, AddRustName);
     let mut types = name(types, TypeScriptNamingRules, AddTypeScriptName);
@@ -78,11 +83,13 @@ fn convert_types(types: TypeSet<BasicMetadata>) -> TypeSet<RustMetadata> {
     types
 }
 
+/// Runs Rust-specific passes to convert [`BasicMetadata`] into [`RustMigrationMetadata`].
 fn convert_types_for_migration(types: TypeSet<BasicMetadata>) -> TypeSet<RustMigrationMetadata> {
     let types = convert_types(types);
     name(types, RustMigrationSuffixNamingRules, AddMigrationName)
 }
 
+/// Implements `versed rust types`.
 pub fn generate_types(
     path: &Path,
     output: &Path,
@@ -99,6 +106,7 @@ pub fn generate_types(
     }
 }
 
+/// Saves type declarations into a specific directory and adds the new module to `mod.rs`.
 fn write_to_directory(
     types: &TypeSet<RustMetadata>,
     options: &RustOptions,
@@ -116,6 +124,7 @@ fn write_to_directory(
     Ok(())
 }
 
+/// Saves type declarations to a specific file.
 fn write_to_file(
     types: &TypeSet<RustMetadata>,
     options: &RustOptions,
@@ -135,6 +144,7 @@ fn write_to_file(
     Ok(())
 }
 
+/// Implements `versed rust migration`.
 pub fn generate_migration(path: &Path, output: &Path, to_file: bool) -> Result<(), Error> {
     let migration = load_migration(path)?;
     let migration = migration.map(convert_types_for_migration);
@@ -147,6 +157,7 @@ pub fn generate_migration(path: &Path, output: &Path, to_file: bool) -> Result<(
     }
 }
 
+/// Saves migrations into a specific directory and adds the new module to `migrations/mod.rs`.
 fn write_migration_to_directory(
     migration: &Migration<RustMigrationMetadata>,
     pairs: &[TypePair<RustMigrationMetadata>],
@@ -173,6 +184,7 @@ fn write_migration_to_directory(
     Ok(())
 }
 
+/// Saves migrations to a specific file.
 fn write_migration_to_file(
     migration: &Migration<RustMigrationMetadata>,
     pairs: &[TypePair<RustMigrationMetadata>],
@@ -192,6 +204,7 @@ fn write_migration_to_file(
     Ok(())
 }
 
+/// Appends `pub mod {name};` to a file.
 fn add_mod_to_file(mod_name: &str, path: &Path) -> Result<(), Error> {
     add_line_to_file(path, format_args!("pub mod {mod_name};")).with_path(path)
 }
