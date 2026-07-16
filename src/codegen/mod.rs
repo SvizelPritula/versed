@@ -1,3 +1,5 @@
+//! Utilities for code generation in backends.
+
 pub mod file_patching;
 pub mod idents;
 pub mod naming_pass;

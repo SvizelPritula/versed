@@ -1,3 +1,5 @@
+//! Provides utilities for collecting and handling [`ariadne::Report`]s.
+
 use std::{io::BufWriter, ops::Range, slice};
 
 use anstream::stderr;
@@ -5,6 +7,7 @@ use ariadne::Source;
 
 use crate::error::{Error, ResultExt};
 
+/// Versed's type for reports.
 type Report<'filename> = ariadne::Report<'static, (&'filename str, Range<usize>)>;
 
 /// A set of [`ariadne::Report`]s, which also tracks of any are errors.

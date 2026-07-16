@@ -1,30 +1,49 @@
+//! Utilities for case-converting and disambiguating identifiers.
+
 use std::fmt::Write;
 
 use icu_properties::props::{
     BinaryProperty, EnumeratedProperty, GeneralCategory, GeneralCategoryGroup, Lowercase, Uppercase,
 };
 
+/// Rules for valid identifiers in a target language.
 pub trait IdentRules {
+    /// Checks if a character may occur at the start of an identifier.
+    ///
+    /// Must be a subset of [`IdentRules::is_continue_char`] and allow `_`.
     fn is_start_char(&self, ch: char) -> bool;
+    /// Checks if a character may occur in an identifier.
+    ///
+    /// Must allow `_` and `0` to `9`.
     fn is_continue_char(&self, ch: char) -> bool;
+    /// Checks if `str` is a reserved identifier that *can* be escaped using [`IdentRules::reserved_prefix`].
     fn is_reserved(&self, str: &str) -> bool;
+    /// A prefix that can be prepended to an identifier to make it not reserved.
     fn reserved_prefix(&self) -> &str;
+    /// Checks if `str` is a reserved identifier that *can't* be escaped using [`IdentRules::reserved_prefix`].
     fn is_always_reserved(&self, _str: &str) -> bool {
         false
     }
 }
 
+/// A type of naming convention (camelCase, kebab-case, etc.).
 pub trait CaseType {
     type Builder: CaseBuilder;
+    /// Creates a [`CaseBuilder`] for this naming convention.
     fn builder(self) -> Self::Builder;
 }
 
+/// Converts letters and word boundaries to an identifier.
 pub trait CaseBuilder {
+    /// Adds a alphanumeric character to the identifier.
     fn add_letter(&mut self, ch: char);
+    /// Adds a word boundary to the identifier.
     fn add_word_end(&mut self);
+    /// Finishes building the identifier and extracts it.
     fn finish(self) -> String;
 }
 
+/// Converts a possibly multi-part identifier using a [`CaseType`] and [`IdentRules`].
 pub fn convert_case<'a>(
     parts: impl IntoIterator<Item = &'a str>,
     case: impl CaseType,
@@ -80,6 +99,7 @@ pub fn convert_case<'a>(
     string
 }
 
+/// Tries appending numeric suffixes to `ident` until `taken` returns `false`.
 pub fn disambiguate(ident: &mut String, mut taken: impl FnMut(&str) -> bool) {
     if !taken(ident) {
         return;
@@ -97,6 +117,7 @@ pub fn disambiguate(ident: &mut String, mut taken: impl FnMut(&str) -> bool) {
     }
 }
 
+/// A builder for PascalCase and camelCase.
 pub struct PascalCamelCaseBuilder {
     string: String,
     uppercase_pending: bool,
@@ -124,8 +145,10 @@ impl CaseBuilder for PascalCamelCaseBuilder {
     }
 }
 
+/// camelCase.
 #[derive(Debug, Clone, Copy)]
 pub struct CamelCase;
+/// PascalCase.
 #[derive(Debug, Clone, Copy)]
 pub struct PascalCase;
 
@@ -151,6 +174,7 @@ impl CaseType for PascalCase {
     }
 }
 
+/// A builder for snake_case and kebab-case.
 pub struct SnakeKebabCaseBuilder {
     string: String,
     separator_pending: bool,
@@ -178,8 +202,10 @@ impl CaseBuilder for SnakeKebabCaseBuilder {
     }
 }
 
+/// snake_case.
 #[derive(Debug, Clone, Copy)]
 pub struct SnakeCase;
+/// kebab-case.
 #[derive(Debug, Clone, Copy)]
 pub struct KebabCase;
 

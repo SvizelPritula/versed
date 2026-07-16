@@ -9,7 +9,6 @@ as well as its testing approach.
 
 Versed uses `rustdoc` to build its documentation.
 To build the documentation, simply run the following command in the root of the repo:
-
 ```sh
 cargo doc --document-private-items
 ```
@@ -260,9 +259,15 @@ Aside from merely verifying that the compiler can parse the schemas,
 they also attempt to convert them to TypeScript and Rust type declarations
 and compile those using `tsc` and `rustc` or `cargo`.
 As such, all of those commands need to be installed to run the full test suite.
+Some tests also need internet access, as some compiled programs have external dependencies.
 
 There are also tests that compile migration functions,
 that make sure the Serde attributes and TypeScript declarations match, etc.
 See the `tests/` folder for a full list.
 Many test groups `include!` `tests/utils/test_schemas.inc.rs`,
 which defines a base set of both simple and tricky schemas.
+
+To run the test suite, simply run:
+```sh
+cargo test
+```

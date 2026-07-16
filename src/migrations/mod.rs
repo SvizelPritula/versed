@@ -1,3 +1,5 @@
+//! Backends and utilities for migrations.
+
 use std::{
     fs::{self, File},
     io::{BufWriter, Write},
@@ -5,7 +7,7 @@ use std::{
 };
 
 use crate::{
-    codegen::file_patching::{add_extention, apply_add_edits, apply_remove_edits, concat_files},
+    codegen::file_patching::{add_extension, apply_add_edits, apply_remove_edits, concat_files},
     error::{Error, ResultExt},
     loading::load_file_with_source,
     migrations::annotate::{annotate, strip_annotations},
@@ -18,12 +20,15 @@ pub use pairing::{TypePair, pair_types};
 mod annotate;
 mod pairing;
 
+/// The extension of the temporary copy of the schema file.
 const OLD_EXTENSION: &str = ".old";
 
+/// Computes the name of the temporary copy of the schema file.
 fn old_schema_path(new_path: &Path) -> PathBuf {
-    add_extention(new_path, OLD_EXTENSION)
+    add_extension(new_path, OLD_EXTENSION)
 }
 
+/// Implements `versed migration begin`.
 pub fn begin(path: &Path) -> Result<(), Error> {
     let (types, src) = load_file_with_source(path)?;
     let edits = annotate(&types);
@@ -39,6 +44,7 @@ pub fn begin(path: &Path) -> Result<(), Error> {
     Ok(())
 }
 
+/// Implements `versed migration finish`.
 pub fn finish(new_path: &Path, migration_path: &Path) -> Result<(), Error> {
     let old_path = old_schema_path(new_path);
 

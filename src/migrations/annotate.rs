@@ -1,3 +1,5 @@
+//! Adds or removes migration markers.
+
 use std::collections::HashSet;
 
 use crate::{
@@ -7,6 +9,7 @@ use crate::{
     syntax::Span,
 };
 
+/// The context for the pass to add migration markers.
 #[derive(Debug)]
 struct AnnotationContext {
     edits: Vec<AddEdit>,
@@ -14,6 +17,7 @@ struct AnnotationContext {
     next_number: u64,
 }
 
+/// Returns a list of [`AddEdit`]s that add migration markers to the schema file.
 pub fn annotate(types: &TypeSet<BasicMetadata>) -> Vec<AddEdit> {
     let mut used = HashSet::new();
 
@@ -34,6 +38,7 @@ pub fn annotate(types: &TypeSet<BasicMetadata>) -> Vec<AddEdit> {
     context.edits
 }
 
+/// Visits a type and generates [`AddEdit`]s recursively.
 fn annotate_type(r#type: &Type<BasicMetadata>, context: &mut AnnotationContext) {
     if r#type.number.is_none() {
         let number = loop {
@@ -72,6 +77,7 @@ fn annotate_type(r#type: &Type<BasicMetadata>, context: &mut AnnotationContext) 
     }
 }
 
+/// Adds all used type numbers to `numbers` recursively.
 fn collect_used_numbers(r#type: &Type<BasicMetadata>, numbers: &mut HashSet<u64>) {
     if let Some(number) = r#type.number {
         numbers.insert(number);
@@ -94,6 +100,7 @@ fn collect_used_numbers(r#type: &Type<BasicMetadata>, numbers: &mut HashSet<u64>
     }
 }
 
+/// Returns a list of [`RemoveEdit`]s that remove migration markers from the schema file.
 pub fn strip_annotations(types: &TypeSet<BasicMetadata>) -> Vec<RemoveEdit> {
     let mut edits = vec![];
 
@@ -104,6 +111,7 @@ pub fn strip_annotations(types: &TypeSet<BasicMetadata>) -> Vec<RemoveEdit> {
     edits
 }
 
+/// Visits a type and generates [`RemoveEdit`]s recursively.
 fn strip_annotations_in_type(r#type: &Type<BasicMetadata>, edits: &mut Vec<RemoveEdit>) {
     if let Some(span) = r#type.metadata.span.number {
         if is_span_empty(r#type.metadata.span.r#type) {
@@ -130,6 +138,7 @@ fn strip_annotations_in_type(r#type: &Type<BasicMetadata>, edits: &mut Vec<Remov
     }
 }
 
+/// Checks if a span is empty.
 fn is_span_empty(span: Span) -> bool {
     span.start == span.end
 }

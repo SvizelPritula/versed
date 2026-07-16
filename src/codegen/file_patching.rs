@@ -1,3 +1,5 @@
+//! Utilities for modifying existing files.
+
 use std::{
     cmp::Reverse,
     fmt,
@@ -7,7 +9,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub fn add_extention(path: &Path, extension: &str) -> PathBuf {
+/// Appends an extension to a file path.
+///
+/// The path should point to a file and the extension should start with a dot.
+pub fn add_extension(path: &Path, extension: &str) -> PathBuf {
     let mut filename = path
         .file_name()
         .expect("path to point to a file")
@@ -16,6 +21,9 @@ pub fn add_extention(path: &Path, extension: &str) -> PathBuf {
     path.with_file_name(filename)
 }
 
+/// Appends a line to the end of a given file.
+///
+/// Will add a trailing newline (LF) to the file first, if it didn't have one before.
 pub fn add_line_to_file(path: &Path, content: fmt::Arguments) -> Result<()> {
     let mut file = OpenOptions::new()
         .write(true)
@@ -51,6 +59,7 @@ pub fn add_line_to_file(path: &Path, content: fmt::Arguments) -> Result<()> {
     Ok(())
 }
 
+/// Writes enough newline characters to `file` to make `content` end with at least `count`.
 fn add_newlines_if_needed(count: usize, content: &str, mut file: impl Write) -> Result<()> {
     let existing = content.chars().rev().take_while(|c| *c == '\n').count();
     let count = count.saturating_sub(existing);
@@ -62,6 +71,7 @@ fn add_newlines_if_needed(count: usize, content: &str, mut file: impl Write) -> 
     Ok(())
 }
 
+/// Writes the concatenation of two strings to a file, adding newlines if needed.
 pub fn concat_files(a: &str, b: &str, path: &Path) -> Result<()> {
     let mut file = BufWriter::new(File::create(path)?);
 
@@ -74,6 +84,7 @@ pub fn concat_files(a: &str, b: &str, path: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Text to be inserted into a file at a specified byte position.
 #[derive(Debug)]
 pub struct AddEdit {
     index: usize,
@@ -81,11 +92,13 @@ pub struct AddEdit {
 }
 
 impl AddEdit {
+    /// Creates a new edit.
     pub fn new(index: usize, content: String) -> AddEdit {
         AddEdit { index, content }
     }
 }
 
+/// Applies a list of [`AddEdit`]s to a file.
 pub fn apply_add_edits<W: Write>(file: &mut W, src: &str, mut edits: Vec<AddEdit>) -> Result<()> {
     edits.sort_by_key(|e| Reverse(e.index));
 
@@ -100,6 +113,7 @@ pub fn apply_add_edits<W: Write>(file: &mut W, src: &str, mut edits: Vec<AddEdit
     Ok(())
 }
 
+/// A range of byte positions to be removed from a file.
 #[derive(Debug)]
 pub struct RemoveEdit {
     range: Range<usize>,
@@ -108,6 +122,7 @@ pub struct RemoveEdit {
 }
 
 impl RemoveEdit {
+    /// Creates a new edit that also trims all whitespace to the left of the range.
     pub fn new_trim_left(range: Range<usize>) -> RemoveEdit {
         RemoveEdit {
             range,
@@ -116,6 +131,7 @@ impl RemoveEdit {
         }
     }
 
+    /// Creates a new edit that also trims all whitespace to the right of the range.
     pub fn new_trim_right(range: Range<usize>) -> RemoveEdit {
         RemoveEdit {
             range,
@@ -125,6 +141,7 @@ impl RemoveEdit {
     }
 }
 
+/// Applies a list of [`RemoveEdit`]s to a file.
 pub fn apply_remove_edits<W: Write>(
     file: &mut W,
     src: &str,

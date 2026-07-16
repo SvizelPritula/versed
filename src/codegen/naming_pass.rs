@@ -1,3 +1,5 @@
+//! A generic pass that assigns every named entity a new name in the target language.
+
 use std::{collections::HashSet, marker::PhantomData};
 
 use crate::{
@@ -9,7 +11,13 @@ use crate::{
     metadata::{MapMetadata, Metadata},
 };
 
+/// Gives names to a specific language entity.
+///
+/// Has an implementation for tuples of [`CaseType`] and [`IdentRules`]
+/// that calls [`convert_case`] and [`disambiguate`],
+/// but a custom implementation can be provided as well.
 pub trait NamingRule {
+    /// Gives a name to an entity constructed from a sequence of parts.
     fn name<'a, P, F>(&self, parts: P, taken: F) -> String
     where
         P: IntoIterator<Item = &'a str>,
@@ -28,18 +36,30 @@ impl<C: CaseType + Copy, I: IdentRules + Copy> NamingRule for (C, I) {
     }
 }
 
+/// A collection of rules to name every type of named entity.
 pub trait NamingRules {
+    /// Gets the rules for naming top level types.
     fn r#type(&self) -> impl NamingRule;
+    /// Gets the rules for naming fields.
     fn field(&self) -> impl NamingRule;
+    /// Gets the rules for naming variants.
     fn variant(&self) -> impl NamingRule;
+    /// Gets the rules for naming versions, which usually get converted to namespaces or modules.
     fn version(&self) -> impl NamingRule;
 }
 
+/// Holds all information needed during the naming pass.
 struct NamingContext<A, B, Map, Rules> {
+    /// The [`NamingRules`] to use.
     rules: Rules,
+    /// How to combine `A` and [`NameMetadata`] into `B`.
     map: Map,
 
+    /// The names already used for some types.
     used_types: HashSet<String>,
+    /// The type, field, variant and element names on the path to the current type.
+    ///
+    /// Used for naming anonymous types.
     type_name_stack: Vec<String>,
 
     _phantom_a: PhantomData<A>,
@@ -53,6 +73,7 @@ where
     Map: MapMetadata<A, NameMetadata, B>,
     Rules: NamingRules,
 {
+    /// Constructs a new context.
     fn new(rules: Rules, map: Map) -> Self {
         NamingContext {
             rules,
@@ -66,6 +87,7 @@ where
         }
     }
 
+    /// Names all types in a [`TypeSet`].
     fn name_types(
         &mut self,
         TypeSet {
@@ -100,6 +122,7 @@ where
         }
     }
 
+    /// Visits and names a type recursively.
     fn name_type(&mut self, r#type: TypeType<A>) -> TypeType<B> {
         match r#type {
             TypeType::Struct(r#struct) => TypeType::Struct(self.name_struct(r#struct)),
@@ -112,6 +135,7 @@ where
         }
     }
 
+    /// Visits and names a type recursively, with `name` added to [`NamingContext::type_name_stack`].
     fn push_and_name_type(&mut self, r#type: Type<A>, name: String) -> (Type<B>, String) {
         self.type_name_stack.push(name);
 
@@ -134,6 +158,7 @@ where
         (r#type, name)
     }
 
+    /// Visits and names a struct recursively.
     fn name_struct(&mut self, Struct { fields, metadata }: Struct<A>) -> Struct<B> {
         let mut new_fields = Vec::with_capacity(fields.len());
         let mut used_names = HashSet::new();
@@ -165,6 +190,7 @@ where
         }
     }
 
+    /// Visits and names an enum recursively.
     fn name_enum(&mut self, Enum { variants, metadata }: Enum<A>) -> Enum<B> {
         let mut new_variants = Vec::with_capacity(variants.len());
         let mut used_names = HashSet::new();
@@ -196,8 +222,10 @@ where
         }
     }
 
+    /// The name added to [`NamingContext::type_name_stack`] to refer to the element of a list.
     const LIST_ELEMENT_NAME: &str = "element";
 
+    /// Visits and names a list recursively.
     fn name_list(&mut self, List { r#type, metadata }: List<A>) -> List<B> {
         let (r#type, _) = self.push_and_name_type(*r#type, Self::LIST_ELEMENT_NAME.to_owned());
 
@@ -207,6 +235,7 @@ where
         }
     }
 
+    /// Visits and names a primitive.
     fn name_primitive(&mut self, Primitive { r#type, metadata }: Primitive<A>) -> Primitive<B> {
         Primitive {
             r#type,
@@ -214,6 +243,7 @@ where
         }
     }
 
+    /// Visits and names an identifier.
     fn name_identifier(&mut self, Identifier { ident, metadata }: Identifier<A>) -> Identifier<B> {
         Identifier {
             ident,
@@ -221,6 +251,7 @@ where
         }
     }
 
+    /// Constructs a name for the current type based on [`NamingContext::type_name_stack`].
     fn current_type_name(&mut self) -> String {
         let parts = self.type_name_stack.iter().map(String::as_str);
 
@@ -234,6 +265,7 @@ where
     }
 }
 
+/// Metadata that assigns every named entity a name in the target language.
 #[derive(Debug, Clone, Copy)]
 pub struct NameMetadata;
 
@@ -252,6 +284,11 @@ impl Metadata for NameMetadata {
     type Variant = String;
 }
 
+/// Assigns every named entity a new name in the target language.
+///
+/// `A` is the metadata type of the input, `B` is the metadata type of the output.
+/// `Map` combines `A` with [`NameMetadata`] to produce `B`.
+/// `Rules` defines the naming conventions and restrictions.
 pub fn name<A, B, Map, Rules>(types: TypeSet<A>, rules: Rules, map: Map) -> TypeSet<B>
 where
     A: Metadata,

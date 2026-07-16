@@ -1,3 +1,5 @@
+//! Pairs types with matching migration markers.
+
 use std::collections::HashMap;
 
 use crate::{
@@ -5,12 +7,14 @@ use crate::{
     metadata::Metadata,
 };
 
+/// A pair of corresponding types, the old version and the new version.
 #[derive(Debug, Clone, Copy)]
 pub struct TypePair<'types, M: Metadata> {
     pub old: &'types Type<M>,
     pub new: &'types Type<M>,
 }
 
+/// Pairs up types with matching migration markers.
 pub fn pair_types<M: Metadata>(migration: &'_ Migration<M>) -> Vec<TypePair<'_, M>> {
     type Element<'types, M> = (Option<&'types Type<M>>, Option<&'types Type<M>>);
     let mut map: HashMap<u64, Element<M>> = HashMap::new();
@@ -30,6 +34,11 @@ pub fn pair_types<M: Metadata>(migration: &'_ Migration<M>) -> Vec<TypePair<'_, 
     vec.into_iter().map(|(_, p)| p).collect()
 }
 
+/// Adds all types with migration markers to a [`HashMap`].
+///
+/// The index will be the type number/migration marker.
+/// It will use the `set` callback to add the type to the [`HashMap`] element,
+/// which allows both the old and new version to be stored in the same element.
 fn collect_type_set<'types, M, E, F>(types: &'types TypeSet<M>, map: &mut HashMap<u64, E>, set: F)
 where
     M: Metadata,
@@ -41,6 +50,7 @@ where
     }
 }
 
+/// Adds all types with migration markers to a [`HashMap`] recursively.
 fn collect_type<'types, M, E, F>(r#type: &'types Type<M>, map: &mut HashMap<u64, E>, set: F)
 where
     M: Metadata,
